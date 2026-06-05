@@ -14,9 +14,20 @@ import {
 } from '../server/models/index.js';
 
 const CITIES = [
-  'New York', 'Los Angeles', 'Chicago', 'Houston', 'Miami', 
-  'San Francisco', 'Seattle', 'Boston'
+  'Mumbai', 'Delhi', 'Bengaluru', 'Hyderabad', 'Chennai', 
+  'Pune', 'Kolkata', 'Ahmedabad'
 ];
+
+const CITY_COORDINATES = {
+  'Mumbai': { lat: 19.0760, lng: 72.8777 },
+  'Delhi': { lat: 28.7041, lng: 77.1025 },
+  'Bengaluru': { lat: 12.9716, lng: 77.5946 },
+  'Hyderabad': { lat: 17.3850, lng: 78.4867 },
+  'Chennai': { lat: 13.0827, lng: 80.2707 },
+  'Pune': { lat: 18.5204, lng: 73.8567 },
+  'Kolkata': { lat: 22.5726, lng: 88.3639 },
+  'Ahmedabad': { lat: 23.0225, lng: 72.5714 }
+};
 
 const SKILLS_BY_CATEGORY = {
   'Plumbing': ['Leak Repair', 'Pipe Installation', 'Drain Cleaning', 'Water Heater Repair', 'Fixture Replacement'],
@@ -42,7 +53,7 @@ const REVIEW_TEMPLATES = [
 ];
 
 async function seed() {
-  console.log('[SEED] Starting database seeding...');
+  console.log('[SEED] Starting database seeding (India-based context)...');
   
   try {
     // 1. Force sync to clear all tables and recreate them
@@ -60,22 +71,27 @@ async function seed() {
       name: 'System Admin',
       email: 'admin@homeconnect.com',
       password: hashedPassword,
-      phone: '+15550100',
-      city: 'New York',
+      phone: '+919876543210',
+      city: 'Mumbai',
       role: 'admin'
     });
     console.log(`[SEED] Created Admin: ${admin.email}`);
 
     // 4. Create 8 Homeowners (role = 'user')
-    console.log('[SEED] Creating 8 Homeowners...');
+    console.log('[SEED] Creating 8 Indian Homeowners...');
+    const homeownerNames = [
+      'Amit Sharma', 'Sunita Patel', 'Rajesh Iyer', 'Priya Nair', 
+      'Anil Kapoor', 'Kavita Reddy', 'Vikram Malhotra', 'Neha Sen'
+    ];
     const homeowners = [];
     for (let i = 0; i < 8; i++) {
+      const name = homeownerNames[i];
       const city = CITIES[i % CITIES.length];
       const homeowner = await User.create({
-        name: `Homeowner ${i + 1}`,
+        name: name,
         email: `homeowner${i + 1}@example.com`,
         password: hashedPassword,
-        phone: `+1555100${i}`,
+        phone: `+91900001000${i}`,
         city: city,
         role: 'user'
       });
@@ -84,16 +100,14 @@ async function seed() {
     console.log(`[SEED] Created ${homeowners.length} homeowners.`);
 
     // 5. Create 20 Workers (role = 'worker' + Worker profile)
-    console.log('[SEED] Creating 20 Workers...');
+    console.log('[SEED] Creating 20 Indian Workers...');
     const workers = [];
     const workerNames = [
-      'John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Williams', 'Charlie Brown',
-      'David Miller', 'Emma Davis', 'Frank Garcia', 'Grace Martinez', 'Henry Wilson',
-      'Ivy Robinson', 'Jack Clark', 'Karen Rodriguez', 'Leo Lewis', 'Mia Lee',
-      'Nathan Walker', 'Olivia Hall', 'Paul Allen', 'Quinn Young', 'Rachel King'
+      'Ramesh Kumar', 'Sanjay Shinde', 'Kamlesh Verma', 'Harpreet Singh', 'Manish Joshi',
+      'Suresh Gupta', 'Naresh Reddy', 'Gopal Rao', 'Ravi Shankar', 'Abdul Khan',
+      'Devendra Singh', 'Ashok Patel', 'Manoj Mishra', 'Santosh Yadav', 'Rajesh Patil',
+      'Dinesh Shinde', 'Vikram Rathore', 'Anand Kulkarni', 'Sunil Joshi', 'Vijay Solanki'
     ];
-
-    const verificationStatuses = ['verified', 'pending', 'rejected'];
 
     for (let i = 0; i < 20; i++) {
       const name = workerNames[i];
@@ -116,7 +130,7 @@ async function seed() {
         name: name,
         email: email,
         password: hashedPassword,
-        phone: `+1555200${i}`,
+        phone: `+91800002000${i}`,
         city: city,
         role: 'worker'
       });
@@ -127,7 +141,7 @@ async function seed() {
         headline: `Professional ${category} Expert with ${experience} Years of Experience`,
         skills: skills,
         experience: experience,
-        languages: ['English', 'Spanish'],
+        languages: ['English', 'Hindi'],
         verificationStatus: verificationStatus,
         availabilityCalendar: [
           { day: 'Monday', slots: ['09:00-12:00', '13:00-17:00'] },
@@ -153,7 +167,7 @@ async function seed() {
     const jobs = [];
     const jobTitles = [
       'Fix kitchen sink pipe leak', 'Re-wiring bathroom outlets', 'Deep clean 3-bedroom apartment',
-      'Lawn pruning and trimming', 'Assemble 3 Ikea closets', 'Paint dining room walls (blue)',
+      'Lawn pruning and trimming', 'Assemble 3 closets', 'Paint dining room walls (blue)',
       'AC unit blowing warm air', 'Fix refrigerator cooling issue', 'Clogged shower drain clearing',
       'Install ceiling fan in bedroom', 'Moveout cleaning service', 'Frontyard weeding and mulch',
       'Build custom wooden shelves', 'Paint house entrance door', 'Washing machine leakage repair'
@@ -164,7 +178,7 @@ async function seed() {
       'Require an electrician to swap out old outlets and install new GFCI outlets in the guest bathroom.',
       'Looking for a professional housekeeper to perform a deep clean of a 3-bedroom, 2-bathroom apartment.',
       'Our garden is overgrown. Need someone to prune the hedges, weed the flowerbeds, and mow the lawn.',
-      'Need help assembling three PAX closets from Ikea. All tools and parts are ready on site.',
+      'Need help assembling three large closets. All tools and parts are ready on site.',
       'Need to paint three walls in the dining room. Blue paint and brushes provided. Just need labor.',
       'Our central AC unit is running but only blowing warm air. Need diagnostic and repair.',
       'Refrigerator is not cooling properly, though the freezer works fine. Need troubleshooting.',
@@ -189,8 +203,9 @@ async function seed() {
       const isEmergency = i % 5 === 0; // Every 5th job is emergency
 
       // Generate coordinates around selected city center (simulated)
-      const lat = 40.7128 + (Math.random() - 0.5) * 0.1;
-      const lng = -74.0060 + (Math.random() - 0.5) * 0.1;
+      const center = CITY_COORDINATES[homeowner.city] || { lat: 19.0760, lng: 72.8777 };
+      const lat = center.lat + (Math.random() - 0.5) * 0.1;
+      const lng = center.lng + (Math.random() - 0.5) * 0.1;
 
       const job = await Job.create({
         userId: homeowner.id,
@@ -201,9 +216,9 @@ async function seed() {
         hours: Math.floor(Math.random() * 4) + 2,
         experience: Math.floor(Math.random() * 3) + 1,
         gender: 'Any',
-        language: ['English'],
+        language: ['English', 'Hindi'],
         startDate: new Date(Date.now() + (i * 24 * 60 * 60 * 1000)), // Daily offset
-        address: `${homeowner.city}, Section ${i + 1}`,
+        address: `${homeowner.city}, Block ${i + 1}`,
         lat: lat,
         lng: lng,
         radius: 15,
@@ -223,10 +238,6 @@ async function seed() {
     // for various workers.
     for (const job of jobs) {
       const homeownerId = job.userId;
-      
-      // Let's create exactly 4-5 reviews per job for different workers to reach 60+ reviews total
-      // 15 jobs * 4 reviews/job = 60 reviews.
-      // 15 jobs * 5 reviews/job = 75 reviews. Let's do 5 reviews per job to be safe (75 total).
       const selectedWorkers = [];
       
       // Pick 5 unique random workers
