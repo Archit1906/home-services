@@ -213,6 +213,88 @@ router.get('/', async (req, res, next) => {
 });
 
 /**
+ * @route   POST /api/jobs/suggest-salary
+ * @desc    Get AI salary band suggestion
+ */
+router.post('/suggest-salary', protect, async (req, res, next) => {
+  try {
+    const { serviceType, description } = req.body;
+    const result = await suggestSalary(serviceType, description);
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   POST /api/jobs/improve-description
+ * @desc    Get professionalized job description
+ */
+router.post('/improve-description', protect, async (req, res, next) => {
+  try {
+    const { title, serviceType, description } = req.body;
+    const result = await improveJobDescription(title, serviceType, description);
+    return res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   POST /api/jobs/:id/hire
+ * @desc    Assign a worker to a job post (Homeowner only)
+ */
+router.post('/:id/hire', protect, async (req, res, next) => {
+  try {
+    const job = await Job.findByPk(req.params.id);
+    if (!job || job.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Job not found' });
+    }
+    if (job.userId !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Not authorized to hire for this job' });
+    }
+
+    const { workerId } = req.body;
+    if (!workerId) {
+      return res.status(400).json({ success: false, message: 'Worker ID is required' });
+    }
+
+    const worker = await Worker.findByPk(workerId, {
+      include: [{ model: User, as: 'user', attributes: ['name'] }]
+    });
+    if (!worker) {
+      return res.status(404).json({ success: false, message: 'Worker not found' });
+    }
+
+    job.status = 'assigned';
+    await job.save();
+
+    // Trigger hired notification via socket
+    emitToUser(worker.userId, 'hired_alert', {
+      jobId: job.id,
+      jobTitle: job.title,
+      homeownerName: req.user.name
+    });
+
+    // Also update any matching applications status to hired if applicable
+    await Application.update(
+      { status: 'hired' },
+      { where: { jobId: job.id, workerId: worker.id } }
+    );
+
+    // Reject other applications
+    await Application.update(
+      { status: 'rejected' },
+      { where: { jobId: job.id, workerId: { [Op.ne]: worker.id } } }
+    );
+
+    return res.json({ success: true, message: `Hired ${worker.user.name} successfully`, job });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   GET /api/jobs/:id
  * @desc    Get a single job details
  */

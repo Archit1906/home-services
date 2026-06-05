@@ -8,6 +8,14 @@ import LandingPage from './pages/LandingPage.jsx';
 import RoleSelection from './pages/RoleSelection.jsx';
 import AuthPage from './pages/AuthPage.jsx';
 import HomeownerDashboard from './pages/HomeownerDashboard.jsx';
+import PostJob from './pages/PostJob.jsx';
+import JobMatches from './pages/JobMatches.jsx';
+import WorkerDashboard from './pages/WorkerDashboard.jsx';
+import BrowseJobs from './pages/BrowseJobs.jsx';
+import WorkerProfile from './pages/WorkerProfile.jsx';
+import ChatMessages from './pages/ChatMessages.jsx';
+import MapExplorer from './pages/MapExplorer.jsx';
+import AdminPanel from './pages/AdminPanel.jsx';
 
 // Route Guards
 function PrivateRoute({ children }) {
@@ -25,7 +33,7 @@ function PrivateRoute({ children }) {
 }
 
 function GuestRoute({ children }) {
-  const { isAuthenticated, loading } = useAuthStore();
+  const { isAuthenticated, user, loading } = useAuthStore();
 
   if (loading) {
     return (
@@ -35,7 +43,32 @@ function GuestRoute({ children }) {
     );
   }
 
-  return !isAuthenticated ? children : <Navigate to="/dashboard/home" replace />;
+  if (isAuthenticated) {
+    if (user?.role === 'worker') {
+      return <Navigate to="/dashboard/worker" replace />;
+    } else if (user?.role === 'admin') {
+      return <Navigate to="/admin" replace />;
+    } else {
+      return <Navigate to="/dashboard/home" replace />;
+    }
+  }
+
+  return children;
+}
+
+
+function AdminRoute({ children }) {
+  const { user, isAuthenticated, loading } = useAuthStore();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  return isAuthenticated && user?.role === 'admin' ? children : <Navigate to="/" replace />;
 }
 
 export default function App() {
@@ -74,13 +107,83 @@ export default function App() {
           }
         />
 
-        {/* Private Homeowner Dashboard Route */}
+        {/* Private Homeowner Dashboard Routes */}
         <Route
           path="/dashboard/home"
           element={
             <PrivateRoute>
               <HomeownerDashboard />
             </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/home/post-job"
+          element={
+            <PrivateRoute>
+              <PostJob />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/home/matches/:jobId"
+          element={
+            <PrivateRoute>
+              <JobMatches />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Private Worker Dashboard Routes */}
+        <Route
+          path="/dashboard/worker"
+          element={
+            <PrivateRoute>
+              <WorkerDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/worker/jobs"
+          element={
+            <PrivateRoute>
+              <BrowseJobs />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Shared Private Routes */}
+        <Route
+          path="/profile/:workerId"
+          element={
+            <PrivateRoute>
+              <WorkerProfile />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/messages/:conversationId"
+          element={
+            <PrivateRoute>
+              <ChatMessages />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/explore"
+          element={
+            <PrivateRoute>
+              <MapExplorer />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Admin Route */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPanel />
+            </AdminRoute>
           }
         />
 

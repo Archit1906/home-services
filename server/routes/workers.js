@@ -1,6 +1,6 @@
 import express from 'express';
 import { Op } from 'sequelize';
-import { Worker, User, Review } from '../models/index.js';
+import { Worker, User, Review, Job, Application } from '../models/index.js';
 import { protect, requireRole } from '../middleware/auth.js';
 import { summarizeReviews } from '../services/geminiService.js';
 import { checkDuplicateProfile } from '../services/fraudDetectionService.js';
@@ -53,6 +53,35 @@ router.get('/', async (req, res, next) => {
     }
 
     return res.json({ success: true, count: workers.length, workers });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/workers/profile/applications
+ * @desc    Retrieve list of applications submitted by the logged in worker
+ */
+router.get('/profile/applications', protect, requireRole('worker'), async (req, res, next) => {
+  try {
+    if (!req.worker) {
+      return res.status(404).json({ success: false, message: 'Worker profile not found' });
+    }
+
+    const applications = await Application.findAll({
+      where: { workerId: req.worker.id, isDeleted: false },
+      include: [
+        {
+          model: Job,
+          as: 'job',
+          where: { isDeleted: false },
+          include: [{ model: User, as: 'user', attributes: ['name', 'phone', 'city', 'email'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    return res.json({ success: true, count: applications.length, applications });
   } catch (error) {
     next(error);
   }

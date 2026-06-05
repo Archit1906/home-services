@@ -45,9 +45,15 @@ export default function AuthPage() {
     if (isLogin) {
       // Login flow
       try {
-        await login(email, password);
+        const data = await login(email, password);
         addToast('Welcome back to HomeConnect!', 'success');
-        navigate('/dashboard/home');
+        if (data.user?.role === 'worker') {
+          navigate('/dashboard/worker');
+        } else if (data.user?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard/home');
+        }
       } catch (err) {
         addToast(err.message || 'Invalid email or password', 'error');
       }
@@ -91,7 +97,7 @@ export default function AuthPage() {
       addToast('OTP verified! Finalizing registration...', 'success');
       
       // Step 2: Register user with mock data
-      await register({
+      const data = await register({
         name,
         email,
         password,
@@ -102,7 +108,11 @@ export default function AuthPage() {
 
       setShowOtpModal(false);
       addToast('Registration complete. Welcome!', 'success');
-      navigate('/dashboard/home');
+      if (data.user?.role === 'worker') {
+        navigate('/dashboard/worker');
+      } else {
+        navigate('/dashboard/home');
+      }
     } catch (err) {
       addToast(err.message || 'Incorrect OTP code', 'error');
     } finally {
