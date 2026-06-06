@@ -12,6 +12,7 @@ import Card from '../components/ui/Card.jsx';
 import Avatar from '../components/ui/Avatar.jsx';
 import Badge from '../components/ui/Badge.jsx';
 import { useToastStore } from '../store/toastStore.js';
+import { useAuthStore } from '../store/authStore.js';
 
 // Popular Service category definitions with icons, counts, and average salary data
 const CATEGORIES = [
@@ -29,6 +30,7 @@ const CATEGORIES = [
 export default function LandingPage() {
   const navigate = useNavigate();
   const { addToast } = useToastStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
 
   const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[2]); // Plumber default
   const [dashboardRoleTab, setDashboardRoleTab] = useState('homeowner'); // Homeowner active toggle
@@ -138,20 +140,52 @@ export default function LandingPage() {
             )}
           </div>
 
-          <button 
-            onClick={() => navigate('/auth')} 
-            className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-text-primary hidden sm:inline-block px-3"
-          >
-            Log In
-          </button>
-          <Button 
-            variant="primary" 
-            size="sm" 
-            className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl shadow-sm hover:shadow"
-            onClick={() => navigate('/get-started')}
-          >
-            Sign Up
-          </Button>
+          {isAuthenticated ? (
+            <>
+              <button 
+                onClick={() => {
+                  logout();
+                  addToast('Logged out successfully', 'success');
+                }} 
+                className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-text-primary hidden sm:inline-block px-3"
+              >
+                Log Out
+              </button>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl shadow-sm hover:shadow"
+                onClick={() => {
+                  if (user?.role === 'worker') {
+                    navigate('/dashboard/worker');
+                  } else if (user?.role === 'admin') {
+                    navigate('/admin');
+                  } else {
+                    navigate('/dashboard/home');
+                  }
+                }}
+              >
+                Dashboard
+              </Button>
+            </>
+          ) : (
+            <>
+              <button 
+                onClick={() => navigate('/auth')} 
+                className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-text-primary hidden sm:inline-block px-3"
+              >
+                Log In
+              </button>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl shadow-sm hover:shadow"
+                onClick={() => navigate('/get-started')}
+              >
+                Sign Up
+              </Button>
+            </>
+          )}
         </div>
       </header>
 

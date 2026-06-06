@@ -14,6 +14,7 @@ export default function Avatar({
   };
 
   const sizes = {
+    xs: 'h-6 w-6 text-[8px]',
     sm: 'h-8 w-8 text-xs',
     md: 'h-12 w-12 text-sm',
     lg: 'h-16 w-16 text-lg',
