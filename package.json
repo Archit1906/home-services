@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "install:all": "npm install && npm install --prefix client && npm install --prefix server",
-    "server": "npm start --prefix server",
+    "server": "npm run dev --prefix server",
     "client": "npm run dev --prefix client",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "seed": "node seed/seedData.js"

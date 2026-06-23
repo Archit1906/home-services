@@ -8,6 +8,7 @@ import Button from '../components/ui/Button.jsx';
 import Input from '../components/ui/Input.jsx';
 import Card from '../components/ui/Card.jsx';
 import Badge from '../components/ui/Badge.jsx';
+import { useJsApiLoader, GoogleMap, MarkerF, CircleF, Autocomplete } from '@react-google-maps/api';
 
 export default function PostJob() {
   const navigate = useNavigate();
@@ -26,7 +27,16 @@ export default function PostJob() {
   const [experience, setExperience] = useState('1');
   const [address, setAddress] = useState('');
   const [radius, setRadius] = useState(10);
-  const [coordinates, setCoordinates] = useState({ lat: 40.7128, lng: -74.0060 });
+  const [coordinates, setCoordinates] = useState({ lat: 19.0760, lng: 72.8777 }); // Mumbai center default
+  const [hasLocation, setHasLocation] = useState(false);
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places']
+  });
+
+  const [autocomplete, setAutocomplete] = useState(null);
 
 
 
@@ -93,14 +103,71 @@ export default function PostJob() {
 
 
   const handleMapClick = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    // Map relative click to simulated coordinates
-    setCoordinates({
-      lat: 40.7128 + (50 - y) * 0.005,
-      lng: -74.0060 + (x - 50) * 0.005
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    const newCoords = { lat, lng };
+    setCoordinates(newCoords);
+    setHasLocation(true);
+
+    if (window.google) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: newCoords }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          setAddress(results[0].formatted_address);
+        }
+      });
+    }
+  };
+
+  const handleMarkerDragEnd = (e) => {
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    const newCoords = { lat, lng };
+    setCoordinates(newCoords);
+    setHasLocation(true);
+
+    if (window.google) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: newCoords }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          setAddress(results[0].formatted_address);
+        }
+      });
+    }
+  };
+
+  const handleSearchAddress = () => {
+    if (!window.google || !address) return;
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ address }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const loc = results[0].geometry.location;
+        const newCoords = { lat: loc.lat(), lng: loc.lng() };
+        setCoordinates(newCoords);
+        setAddress(results[0].formatted_address);
+        setHasLocation(true);
+        addToast('Location updated from search', 'success');
+      } else {
+        addToast('Address not found. Please try a different search or click on the map.', 'warning');
+      }
     });
+  };
+
+  const onAutocompleteLoad = (autoInstance) => {
+    setAutocomplete(autoInstance);
+  };
+
+  const onPlaceChanged = () => {
+    if (autocomplete) {
+      const place = autocomplete.getPlace();
+      if (place.geometry && place.geometry.location) {
+        const loc = place.geometry.location;
+        setCoordinates({ lat: loc.lat(), lng: loc.lng() });
+        setAddress(place.formatted_address || '');
+        setHasLocation(true);
+        addToast('Location set from suggestions', 'success');
+      }
+    }
   };
 
   return (
@@ -326,16 +393,61 @@ export default function PostJob() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Input
-                label="Proximity Address Location"
-                id="address"
-                placeholder="e.g. Sector 5, New York"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                icon={<MapPin className="h-5 w-5" />}
-                required
-              />
+              {/* Autocomplete wrapped address input */}
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-semibold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider ml-1">
+                  Proximity Address Location
+                </label>
+                <div className="flex gap-2">
+                  <div className="relative flex items-center flex-grow">
+                    <div className="absolute left-4 text-text-secondary pointer-events-none">
+                      <MapPin className="h-5 w-5" />
+                    </div>
+                    {isLoaded ? (
+                      <Autocomplete
+                        onLoad={onAutocompleteLoad}
+                        onPlaceChanged={onPlaceChanged}
+                        style={{ width: '100%' }}
+                        className="w-full"
+                      >
+                        <input
+                          id="address"
+                          type="text"
+                          placeholder="Search for your street, city, or neighborhood..."
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.preventDefault();
+                          }}
+                          className="w-full rounded-input border bg-white dark:bg-slate-900 border-border dark:border-border-dark py-3 px-4 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/45 focus:border-primary transition-all duration-200 text-text-primary dark:text-text-darkPrimary placeholder-text-secondary/50 dark:placeholder-text-darkSecondary/40"
+                          required
+                        />
+                      </Autocomplete>
+                    ) : (
+                      <input
+                        id="address"
+                        type="text"
+                        placeholder="Loading maps API..."
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        className="w-full rounded-input border bg-white dark:bg-slate-900 border-border dark:border-border-dark py-3 px-4 pl-11 text-sm focus:outline-none focus:ring-2 focus:ring-primary/45 focus:border-primary transition-all duration-200 text-text-primary dark:text-text-darkPrimary placeholder-text-secondary/50 dark:placeholder-text-darkSecondary/40"
+                        disabled
+                      />
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={handleSearchAddress}
+                    disabled={!isLoaded || !address}
+                    className="px-4 py-2 text-xs font-bold whitespace-nowrap bg-white border border-border hover:bg-slate-50 dark:bg-slate-900 dark:border-border-dark dark:hover:bg-slate-800"
+                  >
+                    Locate
+                  </Button>
+                </div>
+              </div>
 
+              {/* Radius slider */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wider text-text-secondary ml-1">
                   <span>Search Radius area</span>
@@ -343,50 +455,75 @@ export default function PostJob() {
                 </div>
                 <input
                   type="range"
-                  min="2"
+                  min="1"
                   max="50"
                   value={radius}
-                  onChange={(e) => setRadius(e.target.value)}
+                  onChange={(e) => setRadius(Number(e.target.value))}
                   className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-primary"
                 />
               </div>
 
-              {/* Mock interactive map */}
+              {/* Map Board */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-text-secondary uppercase tracking-wider ml-1 flex items-center gap-1">
-                  <MapPin className="h-4 w-4 text-primary" /> Pin Coordinates Pinpoint
+                  <MapPin className="h-4 w-4 text-primary" /> Proximity Pinpoint
                 </label>
-                <div
-                  onClick={handleMapClick}
-                  className="w-full aspect-[2/1] bg-slate-100 dark:bg-slate-900 border border-border/20 rounded-card relative overflow-hidden cursor-crosshair shadow-inner"
-                >
-                  {/* Grid Lines mockup */}
-                  <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#334155_1px,transparent_1px),linear-gradient(to_bottom,#334155_1px,transparent_1px)] bg-[size:24px_24px] opacity-25" />
-                  
-                  {/* Simulated map graphic blobs */}
-                  <div className="absolute top-10 left-12 w-28 h-28 bg-emerald-400/10 rounded-full blur-2xl pointer-events-none" />
-                  <div className="absolute bottom-6 right-20 w-44 h-24 bg-blue-400/10 rounded-full blur-2xl pointer-events-none" />
-                  
-                  {/* Selected Marker */}
-                  <div
-                    className="absolute -translate-x-1/2 -translate-y-full flex flex-col items-center pointer-events-none"
-                    style={{
-                      left: `${((coordinates.lng - (-74.0060)) / 0.05 + 10) * 5}%`,
-                      top: `${(50 - (coordinates.lat - 40.7128) / 0.005)}%`
-                    }}
-                  >
-                    <MapPin className="h-7 w-7 text-primary fill-primary/30 filter drop-shadow animate-bounce" />
-                    <div className="bg-slate-900 text-white text-[9px] px-1.5 py-0.5 rounded shadow whitespace-nowrap mt-1">
-                      Lat: {coordinates.lat.toFixed(4)}, Lng: {coordinates.lng.toFixed(4)}
-                    </div>
+                
+                {isLoaded ? (
+                  <div className="w-full aspect-[2/1] rounded-card overflow-hidden border border-border/20 shadow-md">
+                    <GoogleMap
+                      mapContainerStyle={{ width: '100%', height: '100%' }}
+                      center={coordinates}
+                      zoom={13}
+                      onClick={handleMapClick}
+                      options={{
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false,
+                      }}
+                    >
+                      <MarkerF
+                        position={coordinates}
+                        draggable={true}
+                        onDragEnd={handleMarkerDragEnd}
+                      />
+                      <CircleF
+                        center={coordinates}
+                        radius={radius * 1000}
+                        options={{
+                          fillColor: '#3b82f6',
+                          fillOpacity: 0.15,
+                          strokeColor: '#3b82f6',
+                          strokeOpacity: 0.6,
+                          strokeWeight: 1.5,
+                          clickable: false,
+                          editable: false,
+                          zIndex: 1,
+                        }}
+                      />
+                    </GoogleMap>
                   </div>
-
-                  <span className="absolute bottom-3 left-3 text-[10px] text-text-secondary bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded shadow">
-                    Interactive Grid Mock: Click anywhere to drop pin
-                  </span>
-                </div>
+                ) : (
+                  <div className="w-full aspect-[2/1] bg-slate-100 dark:bg-slate-900 border border-border/20 rounded-card flex items-center justify-center text-xs text-text-secondary animate-pulse">
+                    Loading interactive Google Map...
+                  </div>
+                )}
               </div>
 
+              {/* Address label / debugging stats */}
+              {hasLocation && (
+                <div className="bg-slate-100 dark:bg-slate-900 p-3 rounded-2xl border border-border/10 flex flex-col gap-0.5 animate-fadeIn">
+                  <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wider">Selected Address</span>
+                  <div className="text-xs font-bold text-text-primary leading-snug">
+                    {address}
+                  </div>
+                  <div className="text-[9px] text-text-secondary/70 font-semibold mt-1">
+                    Latitude: {coordinates.lat.toFixed(6)} &bull; Longitude: {coordinates.lng.toFixed(6)}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
               <div className="flex items-center justify-between pt-4">
                 <Button variant="outline" onClick={() => setStep(2)}>
                   Back
@@ -394,6 +531,7 @@ export default function PostJob() {
                 <Button
                   variant="primary"
                   onClick={handleSubmit}
+                  disabled={!hasLocation || !address}
                   icon={<Check className="h-4 w-4" />}
                 >
                   Submit Request

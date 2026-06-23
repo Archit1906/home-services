@@ -213,6 +213,36 @@ router.get('/', async (req, res, next) => {
 });
 
 /**
+ * @route   GET /api/jobs/my-jobs
+ * @desc    Retrieve all jobs posted by the logged-in homeowner
+ */
+router.get('/my-jobs', protect, async (req, res, next) => {
+  try {
+    const jobs = await Job.findAll({
+      where: { userId: req.user.id, isDeleted: false },
+      include: [
+        {
+          model: Application,
+          as: 'applications',
+          include: [
+            {
+              model: Worker,
+              as: 'worker',
+              include: [{ model: User, as: 'user', attributes: ['name', 'photoURL', 'city'] }]
+            }
+          ]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    return res.json({ success: true, count: jobs.length, jobs });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   POST /api/jobs/suggest-salary
  * @desc    Get AI salary band suggestion
  */
