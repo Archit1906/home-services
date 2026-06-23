@@ -28,43 +28,10 @@ export default function PostJob() {
   const [radius, setRadius] = useState(10);
   const [coordinates, setCoordinates] = useState({ lat: 40.7128, lng: -74.0060 });
 
+
+
   // AI states
   const [improving, setImproving] = useState(false);
-  const [loadingSalaryGuide, setLoadingSalaryGuide] = useState(false);
-  const [salaryGuide, setSalaryGuide] = useState(null);
-
-  // Auto load salary suggestions when step 2 is active
-  useEffect(() => {
-    if (step === 2 && description) {
-      fetchSalaryBand();
-    }
-  }, [step]);
-
-  const fetchSalaryBand = async () => {
-    setLoadingSalaryGuide(true);
-    try {
-      const res = await fetch('/api/jobs/suggest-salary', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ serviceType, description })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      setSalaryGuide({
-        min: data.minSalary,
-        max: data.maxSalary,
-        frequency: data.frequency,
-        explanation: data.explanation
-      });
-    } catch (err) {
-      console.error('Salary band suggestion failed', err);
-    } finally {
-      setLoadingSalaryGuide(false);
-    }
-  };
 
   const handleImproveDescription = async () => {
     if (!title || !description) {
@@ -123,13 +90,7 @@ export default function PostJob() {
     }
   };
 
-  const applySuggestedBudget = () => {
-    if (salaryGuide) {
-      const avg = Math.round((salaryGuide.min + salaryGuide.max) / 2);
-      setBudget(avg.toString());
-      addToast(`Applied standard average budget of ₹${avg}!`, 'info');
-    }
-  };
+
 
   const handleMapClick = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -323,7 +284,7 @@ export default function PostJob() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+              <div>
                 <Input
                   label="Budget Amount (₹)"
                   id="budget"
@@ -334,45 +295,6 @@ export default function PostJob() {
                   icon={<DollarSign className="h-5 w-5" />}
                   required
                 />
-
-                {/* AI Salary suggested widget */}
-                <div className="bg-slate-50 dark:bg-slate-900 border border-border/20 rounded-card p-4 space-y-3 relative overflow-hidden">
-                  <div className="flex items-center gap-1.5 font-bold text-xs uppercase tracking-wider text-primary">
-                    <Sparkles className="h-4 w-4 fill-current text-primary" /> Gemini AI Rate recommendation
-                  </div>
-                  {loadingSalaryGuide ? (
-                    <div className="space-y-2 py-2">
-                      <div className="h-4 w-1/3 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
-                      <div className="h-3 w-3/4 bg-slate-200 dark:bg-slate-800 animate-pulse rounded" />
-                    </div>
-                  ) : salaryGuide ? (
-                    <div className="space-y-3">
-                      <div>
-                        <div className="text-lg font-black text-text-primary dark:text-text-darkPrimary">
-                          ₹{salaryGuide.min} - ₹{salaryGuide.max}{' '}
-                          <span className="text-xs font-semibold text-text-secondary uppercase">
-                            / {salaryGuide.frequency}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-text-secondary leading-normal mt-1 italic">
-                          {salaryGuide.explanation}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-primary hover:bg-primary/10 text-xs w-full py-2 font-bold bg-white dark:bg-slate-900 border border-primary/25 rounded-xl mt-2"
-                        onClick={applySuggestedBudget}
-                      >
-                        Apply Suggested Budget
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-text-secondary py-2 flex items-center gap-1.5">
-                      <Info className="h-4 w-4 text-text-secondary" /> Fill in Step 1 to generate wage estimate.
-                    </div>
-                  )}
-                </div>
               </div>
 
               <div className="flex items-center justify-between pt-4">
