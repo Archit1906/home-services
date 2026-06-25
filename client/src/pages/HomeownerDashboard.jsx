@@ -205,6 +205,10 @@ export default function HomeownerDashboard() {
     if (user) {
       if (user.role === 'worker') { navigate('/dashboard/worker'); return; }
       if (user.role === 'admin') { navigate('/admin'); return; }
+      setProfileName(user.name || 'Alex');
+      setProfileEmail(user.email || 'alex@example.com');
+      setProfilePhone(user.phone || '+91 98765 43210');
+      setProfileCity(user.city || 'Udaipur, Rajasthan, India');
       loadDashboardData();
       initSocket(user.id);
     }
@@ -366,6 +370,14 @@ export default function HomeownerDashboard() {
     if (activeChat === 'pooja') return 'House Cleaner';
     return 'Pro';
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0f0f11]">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#5d87c2] border-t-transparent"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0f0f11] flex flex-col text-white font-body selection:bg-primary/30">
@@ -545,7 +557,7 @@ export default function HomeownerDashboard() {
                             <div>
                               <h4 className="font-bold text-sm leading-tight text-white">{job.title}</h4>
                               <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wide">
-                                {job.description.split('.')[0]}
+                                {job.description?.split('.')?.[0] || ''}
                               </p>
                             </div>
                           </div>
@@ -634,7 +646,7 @@ export default function HomeownerDashboard() {
                               </div>
                               <div>
                                 <h4 className="font-bold text-white leading-tight">{job.title}</h4>
-                                <p className="text-[10px] text-zinc-500 leading-tight mt-0.5">{job.description.split('.')[0]}</p>
+                                <p className="text-[10px] text-zinc-500 leading-tight mt-0.5">{job.description?.split('.')?.[0] || ''}</p>
                               </div>
                             </td>
                             <td className="py-4.5 px-6 font-semibold">
