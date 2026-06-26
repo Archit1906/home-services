@@ -5,15 +5,74 @@ import {
   LayoutDashboard, Wrench, FileText, UserCheck, MessageSquare, Star, 
   Heart, CreditCard, User, Settings, HelpCircle, Plus, MapPin, 
   Bell, ChevronDown, ClipboardList, ShieldAlert, AlertCircle, ArrowRight, Menu,
-  Briefcase, Users, ChefHat, Bolt, Sparkles, Sprout, Hammer, Paintbrush, Activity, Laptop,
-  Droplet, Send, CheckCircle2, Phone, Video, Search as SearchIcon, Calendar
+  Briefcase, Users, Droplet, Send, CheckCircle2, Phone, Video, Search as SearchIcon,
+  Calendar, Sun, RefreshCw, Paperclip, Image, DollarSign, Download, Smile, Trash
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore.js';
 import { useToastStore } from '../store/toastStore.js';
 import { useChatStore } from '../store/chatStore.js';
-import Avatar from '../components/ui/Avatar.jsx';
 
-// Custom inline SVG icons for Refrigerator/Spray Bottle
+const getInitials = (name) => {
+  if (!name) return 'H';
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+};
+
+const getCategoryImage = (category) => {
+  const images = {
+    'Plumbing': 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400',
+    'Electrical': 'https://images.unsplash.com/photo-1558002038-1055907df827?w=400',
+    'HVAC': 'https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400',
+    'Cleaning': 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400',
+    'Gardening': 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=400',
+    'Painting': 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400'
+  };
+  return images[category] || 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400';
+};
+
+const mockJobs = [
+  {
+    id: 1,
+    serviceType: 'Plumbing',
+    time: '2 hours ago',
+    title: 'Emergency Pipe Leak Repair',
+    description: 'Water tank line leak on terrace causing seepage in kitchen. Need urgent fixing.',
+    status: 'Hired',
+    hiredWorker: 'Ramesh Kumar',
+    quotes: 0
+  },
+  {
+    id: 2,
+    serviceType: 'Electrical',
+    time: '5 hours ago',
+    title: 'EV Charger Installation',
+    description: 'Tata Nexon EV Charger installation in my apartment parking slot. Need certified electrician.',
+    status: 'Active',
+    hiredWorker: '',
+    quotes: 3
+  },
+  {
+    id: 3,
+    serviceType: 'HVAC',
+    time: '1 day ago',
+    title: 'AC Maintenance & Service',
+    description: 'Split AC deep cleaning and gas top-up before summer starts.',
+    status: 'Open',
+    hiredWorker: '',
+    quotes: 0
+  }
+];
+
+const mockTransactions = [
+  { id: 'tx-1', to: 'Amit Sharma', service: 'Emergency Pipe Leak Repair', amount: 1500, date: 'May 12, 2024', status: 'Completed' },
+  { id: 'tx-2', to: 'Priya Patel', service: 'Accent Wall Painting', amount: 3500, date: 'May 10, 2024', status: 'Completed' },
+  { id: 'tx-3', to: 'Rajesh Kumar', service: 'Panel Upgrade', amount: 4500, date: 'May 08, 2024', status: 'Completed' }
+];
+
+// Custom inline SVG icons
 const RefrigeratorIcon = (props) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M5 2h14v20H5zM5 12h14" />
@@ -29,6 +88,16 @@ const SprayBottleIcon = (props) => (
   </svg>
 );
 
+const PdfIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+
 export default function HomeownerDashboard() {
   const navigate = useNavigate();
   const { user, token, logout } = useAuthStore();
@@ -37,115 +106,65 @@ export default function HomeownerDashboard() {
 
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    activeJobs: 0,
-    applications: 0,
-    hiredWorkers: 0,
-    pendingReviews: 0
-  });
 
-  const [recentApplications, setRecentApplications] = useState([]);
-
-  // Sidebar / Tab Navigation state
+  // Sidebar navigation state
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Sub-filters for tabs
-  const [myJobsFilter, setMyJobsFilter] = useState('all');
-  const [appsFilter, setAppsFilter] = useState('received');
-  const [reviewsFilter, setReviewsFilter] = useState('to-review');
-  const [settingsSubTab, setSettingsSubTab] = useState('general');
+  const [postingsFilter, setPostingsFilter] = useState('active'); // 'active', 'drafts', 'past'
+  const [activeRequestFilter, setActiveRequestFilter] = useState('plumbing'); // 'plumbing', 'electrical', 'hvac'
+  const [reviewsHistoryFilter, setReviewsHistoryFilter] = useState('all'); // 'all', 'high'
+  const [profileName, setProfileName] = useState(user?.name || 'Neha');
 
-  // Messages Tab interactive state
-  const [activeChat, setActiveChat] = useState('ramesh');
+  // Messages Chat state
+  const [activeChat, setActiveChat] = useState('amit');
   const [chatText, setChatText] = useState('');
-  const [rameshMessages, setRameshMessages] = useState([
-    { id: 1, sender: 'ramesh', text: "Hi Alex, I'm on my way", time: '10:30 AM' },
-    { id: 2, sender: 'me', text: "Okay, please check the main bathroom pipes.", time: '10:31 AM' },
-    { id: 3, sender: 'ramesh', text: "Sure, I will check and update you.", time: '10:32 AM' },
-    { id: 4, sender: 'me', text: "Great, thanks!", time: '10:33 AM' }
-  ]);
-  const [sureshMessages, setSureshMessages] = useState([
-    { id: 1, sender: 'suresh', text: "Thank you for selecting me!", time: 'Yesterday' }
-  ]);
-  const [poojaMessages, setPoojaMessages] = useState([
-    { id: 1, sender: 'pooja', text: "Okay, will come tomorrow.", time: '2 days ago' }
+  
+  // Custom mock conversations matching Screenshot 1
+  const [amitMessages, setAmitMessages] = useState([
+    { id: 1, sender: 'amit', text: "Hi Neha! I've had a look at the photos you sent of the leak under the kitchen sink. It looks like a standard P-trap replacement.", time: '10:30 AM' },
+    { id: 2, sender: 'me', text: "Thanks for the quick response, Amit. Do you have an estimate for how long that would take and what the cost would be?", time: '10:35 AM' },
+    { id: 3, sender: 'amit', text: "I can get it done in about an hour. I've attached the formal quote below. If it looks good to you, I can come by tomorrow morning.", time: '10:42 AM' },
+    { id: 4, sender: 'amit', isFile: true, filename: 'KitchenSink_Quote_Sterling.pdf', size: '1.2 MB', time: '10:42 AM' }
   ]);
 
-  // Review interaction state
+  const [priyaMessages, setPriyaMessages] = useState([
+    { id: 1, sender: 'priya', text: "Great, I'll see you on Monday at 9:00 AM.", time: 'Yesterday' }
+  ]);
+
+  const [rajeshMessages, setRajeshMessages] = useState([
+    { id: 1, sender: 'rajesh', text: "Sent you a photo of the panel wiring.", time: 'Tue' }
+  ]);
+
+  // Review state matching Screenshot 4
   const [reviewsState, setReviewsState] = useState([
-    { id: 'ramesh', name: 'Ramesh Kumar', category: 'Plumber', completedDate: '12 May 2024', rating: 0, text: '', submitted: false },
-    { id: 'suresh', name: 'Suresh Yadav', category: 'Electrician', completedDate: '8 May 2024', rating: 0, text: '', submitted: false },
-    { id: 'pooja', name: 'Pooja Sharma', category: 'House Cleaner', completedDate: '2 May 2024', rating: 0, text: '', submitted: false }
+    { id: 'rev-1', name: 'Rohan Mehta', category: 'Certified Electrician', rating: 0, comment: '', submitted: false },
+    { id: 'rev-2', name: 'Priya Patel', category: 'Painting Services', rating: 0, comment: '', submitted: false }
   ]);
 
-  // Profile Edit fields
-  const [profileName, setProfileName] = useState(user?.name || 'Alex');
-  const [profileEmail, setProfileEmail] = useState(user?.email || 'alex@example.com');
-  const [profilePhone, setProfilePhone] = useState(user?.phone || '+91 98765 43210');
-  const [profileCity, setProfileCity] = useState(user?.city || 'Udaipur, Rajasthan, India');
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-
-  // Settings Toggles state
   const [settingsToggles, setSettingsToggles] = useState({
     emailNotifications: true,
-    smsNotifications: true,
-    pushNotifications: false,
-    darkMode: true
+    pushNotifications: true
   });
 
-  // Search Help state
-  const [helpSearchQuery, setHelpSearchQuery] = useState('');
-
-  // Category Icon & Color Mapping
-  const CATEGORY_THEME = {
-    'Plumbing': { icon: Droplet, color: 'text-[#6b95d6] bg-[#2a3c5a]/40' },
-    'Electrical': { icon: Bolt, color: 'text-[#fb923c] bg-[#3f281f]/40' },
-    'Cleaning': { icon: SprayBottleIcon, color: 'text-[#4ade80] bg-[#1f3f35]/40' },
-    'Appliances': { icon: RefrigeratorIcon, color: 'text-[#6b95d6] bg-[#2a3c5a]/40' },
-    'Gardening': { icon: Sprout, color: 'text-emerald-450 bg-emerald-500/10' },
-    'Carpentry': { icon: Hammer, color: 'text-orange-450 bg-orange-500/10' },
-    'Painting': { icon: Paintbrush, color: 'text-pink-450 bg-pink-500/10' },
-    'HVAC': { icon: Activity, color: 'text-red-450 bg-red-500/10' }
+  const handleRatingClick = (id, rating) => {
+    setReviewsState(prev => prev.map(rev => rev.id === id ? { ...rev, rating } : rev));
   };
 
-  const getCategoryTheme = (category) => {
-    return CATEGORY_THEME[category] || { icon: Wrench, color: 'text-slate-400 bg-slate-500/10' };
+  const handleReviewTextChange = (id, comment) => {
+    setReviewsState(prev => prev.map(rev => rev.id === id ? { ...rev, comment } : rev));
   };
 
-  const getInitials = (name) => {
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  const handleReviewSubmit = (id) => {
+    const rev = reviewsState.find(r => r.id === id);
+    if (!rev || !rev.rating) {
+      addToast('Please select a rating before submitting', 'warning');
+      return;
     }
-    return name.slice(0, 2).toUpperCase();
+    setReviewsState(prev => prev.map(r => r.id === id ? { ...r, submitted: true } : r));
+    addToast(`Review for ${rev.name} submitted successfully!`, 'success');
   };
-
-  const getRelativeTimeString = (dateInput) => {
-    const date = new Date(dateInput);
-    const now = new Date();
-    const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const diffTime = nowMidnight - dateMidnight;
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays <= 0) return 'Posted today';
-    if (diffDays === 1) return 'Posted 1 day ago';
-    return `Posted ${diffDays} days ago`;
-  };
-
-  // Weather Dynamic headings
-  const weatherByCity = {
-    'Jodhpur': 'Jodhpur • 32°C, clear — a good day to get that fan installed',
-    'Mumbai': 'Mumbai • 28°C, cloudy — a good day to get that leakage fixed',
-    'Delhi': 'Delhi • 35°C, sunny — perfect day for AC maintenance',
-    'Bengaluru': 'Bengaluru • 22°C, drizzle — perfect day for indoor repairs',
-    'Ahmedabad': 'Ahmedabad • 36°C, hot — check your AC units',
-    'Udaipur': 'Udaipur • 30°C, clear — great day to renovate home interiors'
-  };
-
-  const userCity = user?.city || 'Alex';
-  const cityWeather = weatherByCity[userCity] || `${userCity} • 26°C, clear — perfect day for home service tasks`;
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -158,44 +177,9 @@ export default function HomeownerDashboard() {
       
       const myJobs = data.jobs || [];
       setJobs(myJobs);
-
-      const activeJobsCount = myJobs.filter(j => j.status === 'open').length;
-      const hiredWorkersCount = myJobs.filter(j => j.status === 'assigned').length;
-
-      const allApps = [];
-      myJobs.forEach(job => {
-        if (job.applications) {
-          job.applications.forEach(app => {
-            allApps.push({
-              id: app.id,
-              jobId: job.id,
-              jobTitle: job.title,
-              workerId: app.workerId,
-              name: app.worker?.user?.name || 'Anonymous Pro',
-              photoURL: app.worker?.user?.photoURL,
-              category: job.serviceType,
-              experience: app.worker?.experience || 0,
-              matchScore: app.compatibilityScore || 50,
-              status: app.status,
-              createdAt: app.createdAt
-            });
-          });
-        }
-      });
-
-      allApps.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-      setStats({
-        activeJobs: activeJobsCount || 2,
-        applications: allApps.length || 5,
-        hiredWorkers: hiredWorkersCount || 1,
-        pendingReviews: reviewsState.filter(r => !r.submitted).length
-      });
-
-      setRecentApplications(allApps);
     } catch (err) {
       console.error(err);
-      addToast('Error loading dashboard feeds', 'error');
+      addToast('Error loading dashboard data', 'error');
     } finally {
       setLoading(false);
     }
@@ -205,24 +189,22 @@ export default function HomeownerDashboard() {
     if (user) {
       if (user.role === 'worker') { navigate('/dashboard/worker'); return; }
       if (user.role === 'admin') { navigate('/admin'); return; }
-      setProfileName(user.name || 'Alex');
-      setProfileEmail(user.email || 'alex@example.com');
-      setProfilePhone(user.phone || '+91 98765 43210');
-      setProfileCity(user.city || 'Udaipur, Rajasthan, India');
+      setProfileName(user.name || 'Jane');
       loadDashboardData();
       initSocket(user.id);
+      
+      const userFirstName = (user.name || 'Neha').split(' ')[0];
+      setAmitMessages(prev => prev.map(msg => {
+        if (msg.sender === 'amit' && msg.text && msg.text.includes('Hi Neha!')) {
+          return {
+            ...msg,
+            text: msg.text.replace('Hi Neha!', `Hi ${userFirstName}!`)
+          };
+        }
+        return msg;
+      }));
     }
   }, [user]);
-
-  useEffect(() => {
-    if (socket) {
-      socket.on('new_application', (payload) => {
-        addToast(`New application for "${payload.jobTitle}" with Match Score: ${payload.compatibilityScore}%`, 'success');
-        loadDashboardData();
-      });
-      return () => socket.off('new_application');
-    }
-  }, [socket]);
 
   // Chat message sending
   const sendMessage = () => {
@@ -234,180 +216,106 @@ export default function HomeownerDashboard() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    if (activeChat === 'ramesh') {
-      setRameshMessages([...rameshMessages, newMsg]);
-    } else if (activeChat === 'suresh') {
-      setSureshMessages([...sureshMessages, newMsg]);
-    } else if (activeChat === 'pooja') {
-      setPoojaMessages([...poojaMessages, newMsg]);
+    if (activeChat === 'amit') {
+      setAmitMessages([...amitMessages, newMsg]);
+    } else if (activeChat === 'priya') {
+      setPriyaMessages([...priyaMessages, newMsg]);
+    } else if (activeChat === 'rajesh') {
+      setRajeshMessages([...rajeshMessages, newMsg]);
     }
     setChatText('');
   };
 
-  // Submit worker review
-  const handleReviewSubmit = (id) => {
-    const review = reviewsState.find(r => r.id === id);
-    if (!review.rating) {
-      addToast('Please select a star rating first', 'warning');
-      return;
-    }
-    setReviewsState(
-      reviewsState.map(r => r.id === id ? { ...r, submitted: true } : r)
-    );
-    setStats({
-      ...stats,
-      pendingReviews: Math.max(0, stats.pendingReviews - 1)
-    });
-    addToast(`Submitted review for ${review.name}`, 'success');
-  };
-
-  const handleRatingClick = (id, rating) => {
-    setReviewsState(
-      reviewsState.map(r => r.id === id ? { ...r, rating } : r)
-    );
-  };
-
-  const handleReviewTextChange = (id, text) => {
-    setReviewsState(
-      reviewsState.map(r => r.id === id ? { ...r, text } : r)
-    );
-  };
-
-  // Mock list fallbacks if no database objects exist
-  const mockJobs = [
-    { id: 'mock-1', title: 'Need a Plumber', description: 'Bathroom pipe leaking', serviceType: 'Plumbing', budget: 1000, minBudget: 800, maxBudget: 1200, applicants: 1, postedOn: '2 days ago', status: 'Active' },
-    { id: 'mock-2', title: 'Looking for a Cook', description: 'Full-time - North Indian', serviceType: 'Cleaning', budget: 9000, minBudget: 8000, maxBudget: 10000, applicants: 2, postedOn: '5 days ago', status: 'Active' },
-    { id: 'mock-3', title: 'Electrician Needed', description: 'Switch board repair', serviceType: 'Electrical', budget: 650, minBudget: 500, maxBudget: 800, applicants: 1, postedOn: '10 days ago', status: 'Completed' },
-    { id: 'mock-4', title: 'House Cleaner', description: '3 BHK Deep Cleaning', serviceType: 'Cleaning', budget: 1350, minBudget: 1200, maxBudget: 1500, applicants: 4, postedOn: '15 days ago', status: 'Completed' }
-  ];
-
-  const mockApplications = [
-    { id: 'app-1', name: 'Ramesh Kumar', category: 'Plumber', experience: 5, rating: 4.6, price: 1000, time: 'Applied 2 hours ago', status: 'received' },
-    { id: 'app-2', name: 'Suresh Yadav', category: 'Electrician', experience: 7, rating: 4.8, price: 1200, time: 'Applied 5 hours ago', status: 'received' },
-    { id: 'app-3', name: 'Vikram Singh', category: 'Plumber', experience: 3, rating: 4.2, price: 900, time: 'Applied 1 day ago', status: 'received' },
-    { id: 'app-4', name: 'Amit Gupta', category: 'Carpenter', experience: 4, rating: 4.5, price: 1100, time: 'Applied 2 days ago', status: 'shortlisted' },
-    { id: 'app-5', name: 'Manoj Verma', category: 'Plumber', experience: 9, rating: 4.7, price: 1400, time: 'Applied 3 days ago', status: 'shortlisted' }
-  ];
-
-  const mockHired = [
-    { id: 'hired-1', name: 'Ramesh Kumar', category: 'Plumber', rating: 4.6, price: 1000, active: true },
-    { id: 'hired-2', name: 'Suresh Yadav', category: 'Electrician', rating: 4.7, price: 800, active: false, status: 'Completed' },
-    { id: 'hired-3', name: 'Pooja Sharma', category: 'House Cleaner', rating: 4.5, price: 1200, active: false, status: 'Completed' }
-  ];
-
-  const mockSaved = [
-    { id: 'saved-1', name: 'Ramesh Kumar', category: 'Plumber', experience: 5, rating: 4.6, price: 1000 },
-    { id: 'saved-2', name: 'Suresh Yadav', category: 'Electrician', experience: 7, rating: 4.7, price: 800 },
-    { id: 'saved-3', name: 'Pooja Sharma', category: 'House Cleaner', experience: 4, rating: 4.5, price: 1200 },
-    { id: 'saved-4', name: 'Amit Gupta', category: 'Carpenter', experience: 6, rating: 4.4, price: 1500 }
-  ];
-
-  const mockTransactions = [
-    { id: 'tx-1', to: 'Ramesh Kumar', service: 'Plumbing Service', amount: 1000, date: '12 May 2024', status: 'Completed' },
-    { id: 'tx-2', to: 'Suresh Yadav', service: 'Electrical Repair', amount: 800, date: '8 May 2024', status: 'Completed' },
-    { id: 'tx-3', to: 'Pooja Sharma', service: 'House Cleaning', amount: 650, date: '2 May 2024', status: 'Completed' }
-  ];
-
-  // Resolve dynamic vs mock data for homeowner jobs
-  const displayJobs = jobs.length > 0 ? jobs.map(j => ({
-    id: j.id,
-    title: j.title,
-    description: j.description,
-    serviceType: j.serviceType,
-    budget: j.budget,
-    minBudget: Math.round(j.budget * 0.8),
-    maxBudget: Math.round(j.budget * 1.2),
-    applicants: j.applications?.length || 0,
-    postedOn: getRelativeTimeString(j.createdAt),
-    status: j.status === 'open' ? 'Active' : 'Completed'
-  })) : mockJobs;
-
-  const displayApplications = recentApplications.length > 0 ? recentApplications.map(a => ({
-    id: a.id,
-    name: a.name,
-    category: a.category,
-    experience: a.experience,
-    rating: a.matchScore >= 80 ? 4.8 : 4.4,
-    price: Math.round(a.matchScore * 15),
-    time: getRelativeTimeString(a.createdAt),
-    status: a.status === 'shortlisted' ? 'shortlisted' : 'received'
-  })) : mockApplications;
-
-  // Filter Jobs List
-  const filteredJobs = displayJobs.filter(j => {
-    if (myJobsFilter === 'all') return true;
-    if (myJobsFilter === 'active') return j.status === 'Active';
-    if (myJobsFilter === 'completed') return j.status === 'Completed';
-    if (myJobsFilter === 'cancelled') return j.status === 'Cancelled';
-    return true;
-  });
-
-  // Filter Applications
-  const filteredApps = displayApplications.filter(a => {
-    if (appsFilter === 'received') return a.status === 'received';
-    if (appsFilter === 'shortlisted') return a.status === 'shortlisted';
-    if (appsFilter === 'rejected') return a.status === 'rejected';
-    return true;
-  });
-
   const getActiveChatMessages = () => {
-    if (activeChat === 'ramesh') return rameshMessages;
-    if (activeChat === 'suresh') return sureshMessages;
-    if (activeChat === 'pooja') return poojaMessages;
+    if (activeChat === 'amit') return amitMessages;
+    if (activeChat === 'priya') return priyaMessages;
+    if (activeChat === 'rajesh') return rajeshMessages;
     return [];
   };
 
   const getActiveChatName = () => {
-    if (activeChat === 'ramesh') return 'Ramesh Kumar';
-    if (activeChat === 'suresh') return 'Suresh Yadav';
-    if (activeChat === 'pooja') return 'Pooja Sharma';
+    if (activeChat === 'amit') return 'Amit Sharma';
+    if (activeChat === 'priya') return 'Priya Patel';
+    if (activeChat === 'rajesh') return 'Rajesh Kumar';
     return 'Anonymous';
   };
 
   const getActiveChatRole = () => {
-    if (activeChat === 'ramesh') return 'Plumber';
-    if (activeChat === 'suresh') return 'Electrician';
-    if (activeChat === 'pooja') return 'House Cleaner';
+    if (activeChat === 'amit') return 'Plumbing Specialist';
+    if (activeChat === 'priya') return 'Painting Specialist';
+    if (activeChat === 'rajesh') return 'Electrical Specialist';
     return 'Pro';
   };
 
+  const displayedJobs = jobs.length > 0 
+    ? jobs.map(job => ({
+        id: job.id,
+        serviceType: job.serviceType,
+        time: new Date(job.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+        title: job.title,
+        description: job.description,
+        status: job.status === 'assigned' ? 'Hired' : (job.status === 'open' ? 'Active' : job.status),
+        hiredWorker: job.status === 'assigned' ? (job.applications?.find(a => a.status === 'hired' || a.status === 'assigned')?.worker?.user?.name || 'Assigned Worker') : '',
+        quotes: job.applications?.length || 0
+      }))
+    : mockJobs;
+
+  const activeJobs = jobs.filter(j => j.status === 'open' || j.status === 'assigned');
+
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0f0f11]">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-[#5d87c2] border-t-transparent"></div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-600 border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f11] flex flex-col text-white font-body selection:bg-primary/30">
+    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-800 font-body selection:bg-indigo-600/30">
       
-      {/* Global Header */}
-      <header className="h-16 bg-[#161618] border-b border-zinc-800/50 px-6 flex items-center justify-between z-10 sticky top-0 flex-shrink-0">
+      {/* Header navbar */}
+      <header className="h-16 bg-white border-b border-slate-200/60 px-6 flex items-center justify-between z-10 sticky top-0 flex-shrink-0">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2.5 font-display text-lg font-black text-primary cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="h-9 w-9 bg-primary/10 rounded-xl flex items-center justify-center">
-              <LayoutDashboard className="h-5 w-5 text-primary" />
+          <div className="flex items-center gap-2.5 font-display text-lg font-black text-indigo-600 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
+            <div className="h-9 w-9 bg-indigo-50 rounded-xl flex items-center justify-center">
+              <LayoutDashboard className="h-5 w-5 text-indigo-600" />
             </div>
             <span>HomeConnect</span>
           </div>
-          <button onClick={() => addToast('Sidebar menu toggled', 'info')} className="p-1.5 hover:bg-zinc-850 rounded-lg text-slate-400 hover:text-white transition-all">
+          <button onClick={() => addToast('Sidebar menu toggled', 'info')} className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all">
             <Menu className="h-5 w-5" />
           </button>
         </div>
+
+        <div className="flex-grow max-w-md mx-8 relative hidden md:block">
+          <input
+            type="text"
+            placeholder="Search for services..."
+            className="w-full bg-slate-100 border-0 rounded-full px-5 py-2 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600/20"
+          />
+          <SearchIcon className="h-4 w-4 text-slate-400 absolute right-4 top-2.5" />
+        </div>
         
         <div className="flex items-center gap-4">
-          <button className="p-2 hover:bg-zinc-850 rounded-full transition-all text-slate-400 hover:text-white relative">
+          <button 
+            onClick={() => navigate('/dashboard/home/post-job')}
+            className="bg-indigo-600 hover:bg-indigo-700 text-xs px-4 py-2 rounded-lg font-bold text-white transition-all"
+          >
+            Post a Job
+          </button>
+
+          <button className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500 relative">
             <Bell className="h-5 w-5" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-rose-500 rounded-full" />
           </button>
-          <div className="flex items-center gap-2.5 pl-2 border-l border-zinc-800/40">
-            <div className="h-8 w-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-xs border border-emerald-500/20">
+          
+          <button onClick={() => navigate('/auth')} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500">
+            <MessageSquare className="h-5 w-5" />
+          </button>
+
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+            <div className="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-xs">
               {getInitials(profileName)}
-            </div>
-            <div className="hidden sm:block text-left leading-none">
-              <span className="block text-xs font-black text-white">{profileName}</span>
-              <span className="text-[10px] text-slate-400 font-bold uppercase mt-0.5 block">Homeowner</span>
             </div>
           </div>
         </div>
@@ -417,20 +325,30 @@ export default function HomeownerDashboard() {
       <div className="flex flex-1 h-[calc(100vh-64px)] overflow-hidden">
         
         {/* Navigation Sidebar */}
-        <aside className="w-64 bg-[#121214] border-r border-zinc-800/40 flex flex-col justify-between p-6 overflow-y-auto flex-shrink-0">
+        <aside className="w-64 bg-[#f0f4f9] border-r border-slate-200 flex flex-col justify-between p-6 overflow-y-auto flex-shrink-0 text-slate-700">
           <div className="space-y-6">
+
+            {/* Welcome banner at top of sidebar */}
+            <div className="flex items-center gap-3 mb-6 p-1 pl-2 bg-white/40 rounded-xl border border-slate-200/50">
+              <div className="h-10 w-10 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-sm">
+                {getInitials(profileName)}
+              </div>
+              <div className="leading-none text-left">
+                <span className="block text-[10px] font-bold text-slate-400 mb-0.5">Welcome back</span>
+                <span className="text-xs font-black text-slate-900 uppercase">Premium Member</span>
+              </div>
+            </div>
+
             <nav className="space-y-1">
               {[
                 { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-                { id: 'my-jobs', label: 'My Jobs', icon: Wrench },
-                { id: 'applications', label: 'Applications', icon: FileText },
-                { id: 'hired-workers', label: 'Hired Workers', icon: UserCheck },
+                { id: 'my-jobs', label: 'Postings', icon: Wrench },
                 { id: 'messages', label: 'Messages', icon: MessageSquare },
-                { id: 'reviews', label: 'Reviews', icon: Star },
-                { id: 'saved-workers', label: 'Saved Workers', icon: Heart },
+                { id: 'applications', label: 'Applicants', icon: FileText },
                 { id: 'payments', label: 'Payments', icon: CreditCard },
-                { id: 'profile', label: 'Profile', icon: User },
-                { id: 'settings', label: 'Settings', icon: Settings }
+                { id: 'reviews', label: 'Reviews', icon: Star },
+                { id: 'saved-workers', label: 'Schedule', icon: Calendar },
+                { id: 'help', label: 'Analytics', icon: Star }
               ].map(item => {
                 const IconComponent = item.icon;
                 const isActive = activeTab === item.id;
@@ -438,13 +356,13 @@ export default function HomeownerDashboard() {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-xl transition-all text-left ${
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all text-left ${
                       isActive 
-                        ? 'bg-[#1c1c1e] text-white font-black' 
-                        : 'text-slate-400 hover:text-white hover:bg-zinc-800/40'
+                        ? 'bg-indigo-600 text-white font-black' 
+                        : 'text-slate-600 hover:text-slate-950 hover:bg-slate-200/50'
                     }`}
                   >
-                    <IconComponent className={`h-4.5 w-4.5 ${isActive ? 'text-primary' : ''}`} />
+                    <IconComponent className="h-4.5 w-4.5" />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -452,1055 +370,897 @@ export default function HomeownerDashboard() {
             </nav>
           </div>
 
-          <div className="space-y-2 pt-4 border-t border-zinc-800/40">
+          <div className="space-y-2 pt-4 border-t border-slate-200/60">
             <button 
-              onClick={() => setActiveTab('help')}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-xl transition-all text-left ${
-                activeTab === 'help' 
-                  ? 'bg-[#1c1c1e] text-white font-black' 
-                  : 'text-slate-400 hover:text-white hover:bg-zinc-800/40'
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all text-left ${
+                activeTab === 'settings' ? 'bg-indigo-600 text-white font-black' : 'text-slate-600 hover:bg-slate-200/50'
               }`}
             >
-              <HelpCircle className="h-4.5 w-4.5" /> Help & Support
+              <Settings className="h-4.5 w-4.5" /> Settings
             </button>
+            
+            <button 
+              onClick={() => navigate('/dashboard/worker')}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-lg text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 text-left transition-all"
+            >
+              <RefreshCw className="h-4.5 w-4.5" /> Role Switcher
+            </button>
+
             <button 
               onClick={() => setShowLogoutConfirm(true)} 
-              className="w-full text-xs font-bold uppercase tracking-wider text-rose-500 hover:bg-rose-950/20 p-3 rounded-xl transition-all text-left pl-4"
+              className="w-full text-xs font-bold uppercase tracking-wider text-rose-600 hover:bg-rose-50 p-3 rounded-lg transition-all text-left pl-4"
             >
-              Logout Account
+              Logout
             </button>
           </div>
         </aside>
 
         {/* Dashboard Main View Container */}
-        <main className="flex-grow p-8 overflow-y-auto bg-[#0f0f11]">
+        <main className="flex-grow p-8 overflow-y-auto bg-slate-50">
           
           {/* TAB 1: DASHBOARD */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-8 animate-fadeIn">
-              <header className="flex items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-3xl font-display font-black tracking-tight leading-tight">
-                    Good morning, {profileName.split(' ')[0]}! 👋
-                  </h1>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">
-                    Here's what's happening with your home service hub today.
-                  </p>
-                </div>
-                <button
-                  onClick={() => navigate('/dashboard/home/post-job')}
-                  className="bg-primary hover:bg-primary-dark shadow-default flex items-center gap-1.5 px-4.5 py-3 text-xs font-bold uppercase tracking-wider rounded-xl text-white transition-all hover:scale-[1.02]"
-                >
-                  <Plus className="h-4 w-4" /> Post a new job
-                </button>
-              </header>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-[#1a2333]/40 border border-[#2b3a4a]/40 p-5 rounded-2xl flex flex-col justify-between h-28 relative overflow-hidden">
-                  <div className="flex justify-between items-center w-full">
-                    <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider">Active jobs</span>
-                    <Briefcase className="h-4.5 w-4.5 text-blue-450" />
-                  </div>
-                  <div className="text-3xl font-display font-black text-blue-100">{stats.activeJobs}</div>
-                </div>
-
-                <div className="bg-[#2b2214]/40 border border-[#3f311c]/40 p-5 rounded-2xl flex flex-col justify-between h-28 relative overflow-hidden">
-                  <div className="flex justify-between items-center w-full">
-                    <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Applications</span>
-                    <ClipboardList className="h-4.5 w-4.5 text-amber-450" />
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <div className="text-3xl font-display font-black text-amber-100">{stats.applications}</div>
-                    {stats.applications > 0 && (
-                      <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                        +3 this week
-                      </span>
-                    )}
+            <div className="space-y-8 animate-fadeIn text-left">
+              
+              {/* Weather Banner card */}
+              <div className="bg-gradient-to-r from-indigo-600 to-[#848bf4] text-white p-6 rounded-2xl flex flex-col sm:flex-row justify-between items-center relative overflow-hidden shadow-sm">
+                <div className="space-y-3 text-left relative z-10">
+                  <h2 className="text-lg font-bold">Good morning, {profileName.split(' ')?.[0] || 'Neha'}!</h2>
+                  <p className="text-xs opacity-90 font-medium max-w-xl leading-relaxed">It's 32°C and sunny in Bengaluru today. Perfect weather to schedule a home cleanup.</p>
+                  
+                  <div className="flex gap-2 pt-1.5">
+                    <button onClick={() => addToast('Clear Skies selected', 'info')} className="bg-white/10 hover:bg-white/20 border border-white/15 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all text-white">
+                      <Sun className="h-3.5 w-3.5" /> Clear Skies
+                    </button>
+                    <button onClick={() => addToast('Current humidity: 45%', 'info')} className="bg-white/10 hover:bg-white/20 border border-white/15 px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all text-white">
+                      <Droplet className="h-3.5 w-3.5" /> 45% Humidity
+                    </button>
                   </div>
                 </div>
 
-                <div className="bg-[#122b1c]/40 border border-[#1a3f29]/40 p-5 rounded-2xl flex flex-col justify-between h-28 relative overflow-hidden">
-                  <div className="flex justify-between items-center w-full">
-                    <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Hired workers</span>
-                    <UserCheck className="h-4.5 w-4.5 text-emerald-450" />
-                  </div>
-                  <div className="text-3xl font-display font-black text-emerald-100">{stats.hiredWorkers}</div>
-                </div>
-
-                <div className="bg-[#18181b]/40 border border-[#27272a]/40 p-5 rounded-2xl flex flex-col justify-between h-28 relative overflow-hidden">
-                  <div className="flex justify-between items-center w-full">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Pending reviews</span>
-                    <Star className="h-4.5 w-4.5 text-slate-450" />
-                  </div>
-                  <div className="text-3xl font-display font-black text-slate-100">{stats.pendingReviews}</div>
+                <div className="h-16 w-16 rounded-full bg-white/15 border border-white/10 flex items-center justify-center text-white flex-shrink-0 mt-4 sm:mt-0 relative z-10">
+                  <Sun className="h-8 w-8 text-white" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Recent Job Posts */}
-                <div className="lg:col-span-7 space-y-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-base font-display font-black uppercase tracking-wider text-white">Recent Job Posts</h2>
-                    <button onClick={() => setActiveTab('my-jobs')} className="text-xs font-bold text-blue-400 hover:text-blue-300">View all</button>
-                  </div>
+              {/* Active Requests */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-black uppercase tracking-wider text-slate-950">Active Requests</h2>
+                  <button onClick={() => setActiveTab('my-jobs')} className="text-xs font-bold text-indigo-600 hover:underline">View all</button>
+                </div>
 
-                  <div className="space-y-4">
-                    {displayJobs.slice(0, 2).map((job) => {
-                      const theme = getCategoryTheme(job.serviceType);
-                      const CategoryIcon = theme.icon;
-                      return (
-                        <div key={job.id} className="p-5 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex items-center justify-between hover:border-zinc-700/80 transition-all shadow-sm">
-                          <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-xl ${theme.color} h-11 w-11 flex items-center justify-center`}>
-                              <CategoryIcon className="h-5 w-5" />
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-sm leading-tight text-white">{job.title}</h4>
-                              <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-wide">
-                                {job.description?.split('.')?.[0] || ''}
-                              </p>
-                            </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {displayedJobs.map((job) => (
+                    <div key={job.id} className="p-5 bg-white border border-slate-200/60 rounded-2xl flex flex-col justify-between h-[200px] shadow-sm hover:border-slate-300 transition-all text-left">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="bg-indigo-50 text-indigo-600 px-2.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide">{job.serviceType}</span>
+                          <span className="text-[10px] text-slate-400 font-bold">{job.time}</span>
+                        </div>
+                        <h4 className="font-bold text-sm leading-tight text-slate-900 pt-2">{job.title}</h4>
+                        <p className="text-[10px] text-slate-400 font-bold leading-normal truncate-2-lines pt-1">{job.description}</p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
+                        {job.status === 'Hired' ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 rounded px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide">Hired</span>
+                            <span className="text-[9px] text-slate-500 font-bold">{job.hiredWorker}</span>
                           </div>
-                          <div className="flex items-center gap-5">
-                            <span className="text-xs font-extrabold text-white">₹{job.minBudget?.toLocaleString()} - ₹{job.maxBudget?.toLocaleString()}</span>
-                            <span className="bg-emerald-500/15 text-emerald-400 rounded-lg px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border border-emerald-500/20">
-                              {job.status}
-                            </span>
+                        ) : (
+                          <span className="bg-indigo-50 text-indigo-600 border border-indigo-100 rounded px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide">
+                            {job.quotes > 0 ? `${job.quotes} Quotes` : job.status}
+                          </span>
+                        )}
+                        
+                        {job.status === 'Hired' ? (
+                          <button 
+                            onClick={() => { setActiveTab('messages'); setActiveChat('amit'); }}
+                            className="text-[10px] text-indigo-600 hover:text-indigo-700 font-extrabold uppercase"
+                          >
+                            Message
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => {
+                              if (job.status === 'Active') {
+                                setActiveTab('applications');
+                              } else {
+                                addToast('Editing request...', 'info');
+                              }
+                            }}
+                            className="text-[10px] text-indigo-600 hover:text-indigo-700 font-extrabold uppercase"
+                          >
+                            {job.status === 'Active' ? 'Manage' : 'Edit'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Pros for Your Next Project */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-black uppercase tracking-wider text-slate-950">Pros for Your Next Project</h2>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                    { name: 'Evergreen Landscaping', rating: 4.9, badge: 'TOP RATED', img: 'https://images.unsplash.com/photo-1557429287-b2e26467fc2b?w=400' },
+                    { name: 'Precision Painters', rating: 4.8, badge: 'VERIFIED', img: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400' },
+                    { name: 'Smart Home Pros', rating: 5.0, badge: 'TOP RATED', img: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=400' }
+                  ].map((pro, index) => (
+                    <div key={index} className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm flex flex-col justify-between h-[260px] hover:border-slate-300 transition-all text-left">
+                      <div className="relative h-28 bg-slate-100 flex-shrink-0">
+                        <img src={pro.img} alt={pro.name} className="w-full h-full object-cover" />
+                        <span className="absolute top-2.5 left-2.5 bg-indigo-600 text-white px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide">
+                          {pro.badge}
+                        </span>
+                      </div>
+                      <div className="p-4 flex-grow flex flex-col justify-between">
+                        <div className="space-y-1">
+                          <h4 className="font-bold text-sm text-slate-950 leading-tight">{pro.name}</h4>
+                          <div className="flex text-amber-500 gap-0.5 items-center pt-1">
+                            <Star className="h-3.5 w-3.5 fill-currentColor" />
+                            <span className="text-[10px] text-slate-600 font-bold pl-0.5">{pro.rating} rating</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Upcoming Bookings */}
-                <div className="lg:col-span-5 space-y-4">
-                  <h2 className="text-base font-display font-black uppercase tracking-wider text-white">Upcoming Bookings</h2>
-                  <div className="p-8 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex flex-col items-center justify-center text-center h-[162px] gap-3">
-                    <div className="h-10 w-10 bg-zinc-800 text-zinc-400 rounded-full flex items-center justify-center">
-                      <Calendar className="h-5 w-5" />
+                        <button 
+                          onClick={() => addToast(`Opening profile details...`, 'info')}
+                          className="w-full text-center bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold py-2 rounded-lg transition-colors mt-3"
+                        >
+                          View Profile
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-sm text-white">No upcoming bookings</h4>
-                      <p className="text-xs text-slate-400 mt-0.5">Your upcoming bookings will appear here.</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
+
             </div>
           )}
 
-          {/* TAB 2: MY JOBS */}
+          {/* TAB 2: POSTINGS */}
           {activeTab === 'my-jobs' && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-6 animate-fadeIn text-left">
               <header className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-2xl font-display font-black text-white uppercase tracking-wider">My Jobs</h1>
-                  <p className="text-xs text-slate-400 font-medium">Manage and review your posted service requests.</p>
+                <div className="text-left">
+                  <h1 className="text-2xl font-display font-black text-slate-950 leading-tight">Manage Postings</h1>
+                  <p className="text-xs text-slate-400 font-medium mt-1">Track your active projects and drafts.</p>
                 </div>
                 <button
                   onClick={() => navigate('/dashboard/home/post-job')}
-                  className="bg-primary hover:bg-primary-dark flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl text-white transition-all"
+                  className="bg-indigo-600 hover:bg-indigo-750 flex items-center gap-1.5 px-4.5 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl text-white transition-all"
                 >
-                  <Plus className="h-4 w-4" /> Post a new job
+                  <Plus className="h-4 w-4" /> Post New Job
                 </button>
               </header>
 
-              <div className="flex gap-2 border-b border-zinc-800/40 pb-3">
-                {['all', 'active', 'completed', 'cancelled'].map(filter => (
-                  <button
-                    key={filter}
-                    onClick={() => setMyJobsFilter(filter)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                      myJobsFilter === filter 
-                        ? 'bg-zinc-800 text-white' 
-                        : 'text-zinc-450 hover:text-white'
+              {/* Ongoing budget row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-[#5c3ceb] text-white p-5 rounded-2xl flex flex-col justify-between h-28 relative overflow-hidden shadow">
+                  <span className="text-[9px] font-bold uppercase tracking-wider opacity-85">ONGOING BUDGET</span>
+                  <div className="text-2xl font-display font-black">₹1,42,500.00</div>
+                  <span className="text-[9.5px] font-bold block mt-1">▲ 4 active contracts in progress</span>
+                </div>
+                <div className="bg-white border border-slate-200/60 p-5 rounded-2xl flex flex-col justify-between h-28 shadow-sm">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Awaiting Response</span>
+                  <div className="text-2xl font-display font-black text-slate-900">12</div>
+                  <button onClick={() => setActiveTab('applications')} className="text-[9.5px] font-black text-indigo-600 text-left hover:underline">View Applicants &rarr;</button>
+                </div>
+                <div className="bg-white border border-slate-200/60 p-5 rounded-2xl flex flex-col justify-between h-28 shadow-sm">
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Drafts Saved</span>
+                  <div className="text-2xl font-display font-black text-slate-900">3</div>
+                  <span className="text-[9.5px] text-slate-450 font-bold block mt-1">Updated 2h ago</span>
+                </div>
+              </div>
+
+              {/* Active Jobs / Drafts tab switcher */}
+              <div className="flex gap-4 border-b border-slate-200/60 pb-2 mt-4 text-xs font-bold">
+                {['active', 'drafts', 'past'].map(item => (
+                  <button 
+                    key={item} 
+                    onClick={() => setPostingsFilter(item)}
+                    className={`pb-2 border-b-2 px-1 uppercase tracking-wider transition-all ${
+                      postingsFilter === item ? 'border-indigo-600 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-650'
                     }`}
                   >
-                    {filter} jobs
+                    {item === 'active' ? 'Active Jobs' : (item === 'drafts' ? 'Drafts' : 'Past Projects')}
                   </button>
                 ))}
               </div>
 
-              <div className="bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-zinc-300">
-                    <thead className="bg-[#151517] text-zinc-400 uppercase font-black tracking-wider text-[10px] border-b border-zinc-800/40">
-                      <tr>
-                        <th className="py-4 px-6">Job Title</th>
-                        <th className="py-4 px-6">Budget</th>
-                        <th className="py-4 px-6 text-center">Applicants</th>
-                        <th className="py-4 px-6">Posted On</th>
-                        <th className="py-4 px-6 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800/30">
-                      {filteredJobs.map((job) => {
-                        const theme = getCategoryTheme(job.serviceType);
-                        const CategoryIcon = theme.icon;
-                        return (
-                          <tr key={job.id} className="hover:bg-zinc-850/25 transition-colors">
-                            <td className="py-4.5 px-6 flex items-center gap-3">
-                              <div className={`p-2 rounded-lg ${theme.color} h-8 w-8 flex items-center justify-center flex-shrink-0`}>
-                                <CategoryIcon className="h-4.5 w-4.5" />
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-white leading-tight">{job.title}</h4>
-                                <p className="text-[10px] text-zinc-500 leading-tight mt-0.5">{job.description?.split('.')?.[0] || ''}</p>
-                              </div>
-                            </td>
-                            <td className="py-4.5 px-6 font-semibold">
-                              ₹{job.minBudget?.toLocaleString()} - ₹{job.maxBudget?.toLocaleString()}
-                            </td>
-                            <td className="py-4.5 px-6 text-center font-bold text-indigo-400">
-                              {job.applicants}
-                            </td>
-                            <td className="py-4.5 px-6 text-zinc-450">{job.postedOn}</td>
-                            <td className="py-4.5 px-6 text-right">
-                              <span className={`inline-block px-2.5 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border ${
-                                job.status === 'Active'
-                                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                  : 'bg-zinc-800/50 border-zinc-700 text-zinc-400'
-                              }`}>
-                                {job.status}
+              {/* Postings grid */}
+              {postingsFilter === 'active' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {activeJobs.length > 0 ? (
+                    activeJobs.map((job) => {
+                      const progress = job.status === 'assigned' ? 65 : 5;
+                      const hiredWorker = job.status === 'assigned' 
+                        ? (job.applications?.find(a => a.status === 'hired' || a.status === 'assigned')?.worker?.user?.name || 'Ramesh Kumar')
+                        : 'Awaiting Quotes';
+                      return (
+                        <div key={job.id} className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm flex flex-col h-[280px]">
+                          <div className="h-28 bg-slate-100">
+                            <img src={getCategoryImage(job.serviceType)} alt={job.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-4 flex-grow flex flex-col justify-between">
+                            <div className="space-y-1">
+                              <span className="text-[8px] text-indigo-600 font-extrabold uppercase tracking-wide">{job.serviceType.toUpperCase()}</span>
+                              <h4 className="font-bold text-sm text-slate-900 leading-tight">{job.title}</h4>
+                              <span className="text-[9.5px] text-slate-400 font-bold block mt-1">
+                                {job.status === 'assigned' ? `Assigned to ${hiredWorker}` : 'Awaiting Quotes'}
                               </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: APPLICATIONS */}
-          {activeTab === 'applications' && (
-            <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h1 className="text-2xl font-display font-black text-white uppercase tracking-wider">Applications</h1>
-                <p className="text-xs text-slate-400 font-medium">Review bids submitted by matched service providers.</p>
-              </div>
-
-              <div className="flex gap-2 border-b border-zinc-800/40 pb-3">
-                {['received', 'shortlisted', 'rejected'].map(filter => {
-                  const count = displayApplications.filter(a => a.status === filter).length;
-                  return (
-                    <button
-                      key={filter}
-                      onClick={() => setAppsFilter(filter)}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                        appsFilter === filter 
-                          ? 'bg-zinc-800 text-white' 
-                          : 'text-zinc-450 hover:text-white'
-                      }`}
-                    >
-                      {filter} ({count})
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="space-y-4">
-                {filteredApps.length === 0 ? (
-                  <div className="p-8 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl text-center space-y-2">
-                    <ClipboardList className="h-8 w-8 text-zinc-550 mx-auto" />
-                    <h4 className="font-bold text-white text-sm">No applications in this category</h4>
-                    <p className="text-xs text-zinc-400">Applications from matched local pros will show up here.</p>
-                  </div>
-                ) : (
-                  filteredApps.map((app) => (
-                    <div key={app.id} className="p-5 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex items-center justify-between hover:border-zinc-700/80 transition-all shadow-sm">
-                      <div className="flex items-center gap-4.5">
-                        <div className="h-10 w-10 rounded-full bg-indigo-950 text-indigo-200 flex items-center justify-center font-black text-xs border border-indigo-900/40">
-                          {getInitials(app.name)}
+                            </div>
+                            <div className="space-y-2 mt-4">
+                              <div className="flex justify-between items-center text-[9px] font-bold text-slate-500">
+                                <span>Progress</span>
+                                <span>{progress}% Done</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                                <div className="bg-indigo-600 h-full transition-all duration-300" style={{ width: `${progress}%` }} />
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-bold text-sm text-white leading-tight">{app.name}</h4>
-                          <p className="text-[10px] text-zinc-450 font-bold uppercase tracking-wider mt-1 flex items-center gap-1.5">
-                            <span>{app.category}</span> &bull; 
-                            <span>{app.experience} yrs exp</span> &bull;
-                            <span className="flex items-center text-amber-400 gap-0.5"><Star className="h-3 w-3 fill-currentColor" /> {app.rating}</span>
-                          </p>
+                      );
+                    })
+                  ) : (
+                    <>
+                      {/* Card 1 */}
+                      <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm flex flex-col h-[280px]">
+                        <div className="h-28 bg-slate-100">
+                          <img src="https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400" alt="Kitchen Remodel" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="p-4 flex-grow flex flex-col justify-between">
+                          <div className="space-y-1">
+                            <span className="text-[8px] text-indigo-600 font-extrabold uppercase tracking-wide">KITCHEN REMODEL</span>
+                            <h4 className="font-bold text-sm text-slate-900 leading-tight">Gourmet Kitchen Upgrade</h4>
+                            <span className="text-[9.5px] text-slate-400 font-bold block mt-1">2 pros assigned</span>
+                          </div>
+                          <div className="space-y-2 mt-4">
+                            <div className="flex justify-between items-center text-[9px] font-bold text-slate-500">
+                              <span>Progress</span>
+                              <span>65% Done</span>
+                            </div>
+                            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                              <div className="bg-indigo-600 h-full w-[65%]" />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <span className="block text-[10px] text-zinc-500 uppercase tracking-wider font-bold">Estimated Quote</span>
-                          <span className="text-sm font-black text-[#4ade80]">₹{app.price?.toLocaleString()}</span>
+
+                      {/* Card 2 */}
+                      <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm flex flex-col h-[280px]">
+                        <div className="h-28 bg-slate-100">
+                          <img src="https://images.unsplash.com/photo-1581092921461-eab62e97a780?w=400" alt="HVAC Repair" className="w-full h-full object-cover" />
                         </div>
-                        <span className="text-xs text-zinc-450 font-medium">{app.time}</span>
-                        <div className="flex gap-2">
-                          <button 
-                            onClick={() => {
-                              addToast(`Opening profile of ${app.name}`, 'info');
-                            }} 
-                            className="px-4 py-2 border border-zinc-800 bg-transparent hover:bg-zinc-800 text-xs font-bold rounded-xl transition-all"
-                          >
-                            View
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setActiveTab('messages');
-                              setActiveChat(app.name.toLowerCase().includes('ramesh') ? 'ramesh' : app.name.toLowerCase().includes('suresh') ? 'suresh' : 'pooja');
-                            }} 
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold rounded-xl text-white transition-all"
-                          >
-                            Message
-                          </button>
+                        <div className="p-4 flex-grow flex flex-col justify-between">
+                          <div className="space-y-1">
+                            <span className="text-[8px] text-indigo-600 font-extrabold uppercase tracking-wide">HVAC MAINTENANCE</span>
+                            <h4 className="font-bold text-sm text-slate-900 leading-tight">Annual AC System Repair</h4>
+                            <span className="text-[9.5px] text-slate-400 font-bold block mt-1">Priya Patel &bull; Scheduled Tomorrow</span>
+                          </div>
+                          <div className="space-y-2 mt-4">
+                            <div className="flex justify-between items-center text-[9px] font-bold text-slate-500">
+                              <span>Progress</span>
+                              <span>Not Started</span>
+                            </div>
+                            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                              <div className="bg-slate-300 h-full w-[5%]" />
+                            </div>
+                          </div>
                         </div>
                       </div>
+                    </>
+                  )}
+
+                  {/* Card 3 (Start new project link) */}
+                  <div 
+                    onClick={() => navigate('/dashboard/home/post-job')}
+                    className="border border-dashed border-slate-350 hover:border-slate-450 hover:bg-slate-50 rounded-2xl flex flex-col items-center justify-center text-center p-6 h-[280px] cursor-pointer transition-all"
+                  >
+                    <div className="h-10 w-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center border border-indigo-100">
+                      <Plus className="h-5 w-5" />
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
+                    <h4 className="font-bold text-slate-950 mt-3.5 text-sm">Start a New Project</h4>
+                    <p className="text-[10px] text-slate-400 font-semibold max-w-xs mt-1">Get quotes from top pros in minutes.</p>
+                  </div>
+                </div>
+              )}
 
-          {/* TAB 4: HIRED WORKERS */}
-          {activeTab === 'hired-workers' && (
-            <div className="space-y-8 animate-fadeIn">
-              <div className="space-y-4">
-                <h2 className="text-base font-display font-black uppercase tracking-wider text-white">Active Workers</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {mockHired.filter(h => h.active).map(worker => (
-                    <div key={worker.id} className="p-5 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex items-center justify-between hover:border-zinc-700/80 transition-all">
-                      <div className="flex items-center gap-3.5">
-                        <div className="h-10 w-10 rounded-full bg-emerald-950 text-emerald-250 flex items-center justify-center font-black text-xs border border-emerald-900/40">
-                          {getInitials(worker.name)}
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-sm text-white leading-tight">{worker.name}</h4>
-                          <p className="text-[10px] text-zinc-450 font-bold uppercase tracking-wider mt-1 flex items-center gap-1.5">
-                            <span>{worker.category}</span> &bull; 
-                            <span className="flex items-center text-amber-400 gap-0.5"><Star className="h-3 w-3 fill-currentColor" /> {worker.rating}</span>
-                          </p>
+              {postingsFilter === 'drafts' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Draft Card */}
+                  <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm flex flex-col justify-between h-[200px] text-left">
+                    <div className="space-y-2">
+                      <span className="bg-slate-100 text-slate-550 border border-slate-200 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide">DRAFT</span>
+                      <h4 className="font-bold text-sm text-slate-950 pt-1">Smart Home Security Setup</h4>
+                      <p className="text-[10px] text-slate-400 font-bold leading-normal">Last edited: 2 days ago. Missing budget estimation.</p>
+                    </div>
+                    <div className="flex gap-3 pt-3 border-t border-slate-100">
+                      <button onClick={() => addToast('Loading draft...', 'info')} className="bg-indigo-600 hover:bg-indigo-700 text-[10px] font-bold px-4 py-2 rounded-lg text-white">Finish Posting</button>
+                      <button onClick={() => addToast('Draft discarded', 'info')} className="text-[10px] font-bold text-rose-600 hover:text-rose-700">Discard</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Recently Completed section at bottom */}
+              <div className="space-y-4 pt-6 border-t border-slate-200/60 mt-8">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black uppercase text-slate-950 tracking-wider">Recently Completed</h3>
+                  <button onClick={() => addToast('Viewing all completed posts...', 'info')} className="text-xs font-bold text-indigo-600 hover:underline">View All &rarr;</button>
+                </div>
+                <div className="bg-white border border-slate-200/60 rounded-2xl p-4.5 space-y-3.5 shadow-sm">
+                  {[
+                    { title: 'Roof Leak Patching', date: 'Completed Oct 12', cost: 850 },
+                    { title: 'Bathroom Sink Faucet Install', date: 'Completed Sep 28', cost: 220 }
+                  ].map((job, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs pb-3 last:pb-0 last:border-b-0 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8.5 w-8.5 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500"><CheckCircle2 className="h-4.5 w-4.5" /></div>
+                        <div className="leading-none text-left">
+                          <h4 className="font-bold text-slate-900 leading-tight">{job.title}</h4>
+                          <span className="text-[9.5px] text-slate-400 font-bold block mt-1">{job.date}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <span className="text-[9px] text-zinc-550 block uppercase font-bold tracking-wider">Rate</span>
-                          <span className="text-xs font-black text-zinc-200">₹{worker.price?.toLocaleString()}/Visit</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => addToast('Hiring flow initiated', 'info')} className="bg-[#5d87c2] hover:bg-[#4b75af] text-xs px-4 py-2 font-bold rounded-xl text-white transition-all">
-                            Hire Again
-                          </button>
-                          <button onClick={() => { setActiveTab('messages'); setActiveChat('ramesh'); }} className="border border-zinc-800 hover:bg-zinc-800 text-xs px-4 py-2 font-bold rounded-xl transition-all">
-                            Message
-                          </button>
-                        </div>
+                        <span className="font-extrabold text-slate-900">${job.cost}</span>
+                        <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 rounded px-2.5 py-0.5 text-[8.5px] font-extrabold uppercase tracking-wide">VERIFIED</span>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-
-              <div className="space-y-4 pt-4 border-t border-zinc-800/40">
-                <h2 className="text-base font-display font-black uppercase tracking-wider text-white">Past Hired Workers</h2>
-                <div className="bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs text-zinc-300">
-                      <thead className="bg-[#151517] text-zinc-400 uppercase font-black tracking-wider text-[10px] border-b border-zinc-800/40">
-                        <tr>
-                          <th className="py-4 px-6">Worker</th>
-                          <th className="py-4 px-6">Category</th>
-                          <th className="py-4 px-6">Cost</th>
-                          <th className="py-4 px-6">Rating</th>
-                          <th className="py-4 px-6 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-800/30">
-                        {mockHired.filter(h => !h.active).map(worker => (
-                          <tr key={worker.id} className="hover:bg-zinc-850/25 transition-colors">
-                            <td className="py-4 px-6 flex items-center gap-3">
-                              <div className="h-8 w-8 rounded-full bg-zinc-800 text-zinc-300 flex items-center justify-center font-bold text-xs border border-zinc-700/50">
-                                {getInitials(worker.name)}
-                              </div>
-                              <span className="font-bold text-white">{worker.name}</span>
-                            </td>
-                            <td className="py-4 px-6 text-zinc-400">{worker.category}</td>
-                            <td className="py-4 px-6 font-semibold">₹{worker.price?.toLocaleString()}/Visit</td>
-                            <td className="py-4 px-6 text-amber-400 font-bold flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-currentColor" /> {worker.rating}</td>
-                            <td className="py-4 px-6 text-right">
-                              <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg px-2 py-0.5 font-bold uppercase tracking-wider text-[8px]">
-                                {worker.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* TAB 5: MESSAGES */}
+          {/* TAB 3: MESSAGES */}
           {activeTab === 'messages' && (
-            <div className="h-[600px] border border-zinc-800/60 rounded-2xl overflow-hidden bg-[#121214] flex animate-fadeIn">
+            <div className="h-[600px] border border-slate-200/60 rounded-2xl overflow-hidden bg-white flex animate-fadeIn shadow-sm text-left">
               
-              {/* Active chats sidebar */}
-              <div className="w-80 border-r border-zinc-800/50 flex flex-col">
-                <header className="p-4.5 border-b border-zinc-800/50">
-                  <h3 className="font-display font-black text-sm uppercase tracking-wider text-zinc-300">Conversations</h3>
+              {/* Inbox sidebar */}
+              <div className="w-80 border-r border-slate-200 flex flex-col bg-slate-50">
+                <header className="p-4.5 border-b border-slate-200">
+                  <h3 className="font-display font-black text-sm uppercase tracking-wider text-slate-700">Messages</h3>
                 </header>
-                <div className="flex-grow overflow-y-auto divide-y divide-zinc-850">
+                <div className="flex-grow overflow-y-auto divide-y divide-slate-100 bg-white">
                   {[
-                    { id: 'ramesh', name: 'Ramesh Kumar', desc: 'I will be at your place in 20 mins.', time: '2m ago' },
-                    { id: 'suresh', name: 'Suresh Yadav', desc: 'Thank you!', time: '1d ago' },
-                    { id: 'pooja', name: 'Pooja Sharma', desc: 'Okay, will come tomorrow.', time: '2d ago' }
+                    { id: 'marcus', name: 'Marcus Sterling', category: 'PLUMBING', desc: "I've attached the quote for the kitchen si...", time: '10:42 AM', active: true },
+                    { id: 'elena', name: 'Elena Rossi', category: 'PAINTING', desc: "Great, I'll see you on Monday at 9:00 AM.", time: 'Yesterday' },
+                    { id: 'david', name: 'David Chen', category: 'ELECTRICAL', desc: 'Sent you a photo of the panel wiring.', time: 'Tue' }
                   ].map(chat => (
                     <button
                       key={chat.id}
                       onClick={() => setActiveChat(chat.id)}
-                      className={`w-full p-4 flex items-start gap-3 transition-colors text-left ${
+                      className={`w-full p-4 flex items-start gap-3 transition-colors text-left border-l-4 ${
                         activeChat === chat.id 
-                          ? 'bg-[#1c1c1e] text-white' 
-                          : 'hover:bg-zinc-800/30 text-zinc-400'
+                          ? 'bg-indigo-50/50 border-l-indigo-600 text-slate-900' 
+                          : 'border-l-transparent hover:bg-slate-50 text-slate-600'
                       }`}
                     >
-                      <div className="h-9 w-9 rounded-full bg-zinc-800 text-zinc-250 flex items-center justify-center font-bold text-xs border border-zinc-700 flex-shrink-0">
+                      <div className="h-9 w-9 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs border border-slate-200 flex-shrink-0 relative">
                         {getInitials(chat.name)}
+                        {chat.active && <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 border border-white" />}
                       </div>
-                      <div className="flex-grow min-w-0 leading-none">
+                      <div className="flex-grow min-w-0">
                         <div className="flex justify-between items-baseline mb-1">
-                          <h4 className="font-bold text-sm truncate text-zinc-200">{chat.name}</h4>
-                          <span className="text-[9px] text-zinc-550 flex-shrink-0">{chat.time}</span>
+                          <h4 className="font-bold text-xs truncate text-slate-900 leading-none">{chat.name}</h4>
+                          <span className="text-[9px] text-slate-450 flex-shrink-0">{chat.time}</span>
                         </div>
-                        <p className="text-xs text-zinc-400 truncate leading-tight mt-0.5">{chat.desc}</p>
+                        <span className="bg-indigo-50 text-indigo-600 px-1 py-0.2 rounded text-[7.5px] font-extrabold uppercase tracking-wide leading-none">{chat.category}</span>
+                        <p className="text-xs text-slate-400 truncate leading-tight mt-1">{chat.desc}</p>
                       </div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Chat Viewport */}
-              <div className="flex-grow flex flex-col bg-[#141416]">
-                <header className="h-14 border-b border-zinc-800/50 px-6 flex items-center justify-between flex-shrink-0 bg-[#161618]">
+              {/* Chat Window */}
+              <div className="flex-grow flex flex-col bg-white">
+                <header className="h-14 border-b border-slate-200 px-6 flex items-center justify-between flex-shrink-0 bg-slate-50">
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-zinc-800 text-zinc-300 flex items-center justify-center font-bold text-xs border border-zinc-700">
+                    <div className="h-8.5 w-8.5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs border border-indigo-200">
                       {getInitials(getActiveChatName())}
                     </div>
-                    <div>
-                      <h3 className="font-bold text-sm leading-tight text-white">{getActiveChatName()}</h3>
-                      <p className="text-[10px] text-emerald-450 font-bold uppercase tracking-wider">Online</p>
+                    <div className="text-left leading-none">
+                      <h3 className="font-bold text-sm text-slate-900">{getActiveChatName()}</h3>
+                      <p className="text-[10px] text-slate-400 mt-1">Active Now &bull; {getActiveChatRole()}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 text-zinc-400">
-                    <button onClick={() => addToast('Voice calling...', 'info')} className="p-1.5 hover:text-white rounded-lg hover:bg-zinc-850"><Phone className="h-4 w-4" /></button>
-                    <button onClick={() => addToast('Video calling...', 'info')} className="p-1.5 hover:text-white rounded-lg hover:bg-zinc-850"><Video className="h-4 w-4" /></button>
+                  <div className="flex items-center gap-3 text-slate-400">
+                    <button onClick={() => addToast('Calling...', 'info')} className="p-1.5 hover:text-indigo-600 rounded-lg hover:bg-slate-100"><Phone className="h-4 w-4" /></button>
+                    <button onClick={() => addToast('Opening Video Call...', 'info')} className="p-1.5 hover:text-indigo-600 rounded-lg hover:bg-slate-100"><Video className="h-4 w-4" /></button>
                   </div>
                 </header>
 
                 <div className="flex-grow p-6 overflow-y-auto space-y-4">
+                  <div className="text-center my-4"><span className="bg-indigo-50 text-indigo-600 text-[9px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full border border-indigo-100/50">TODAY</span></div>
                   {getActiveChatMessages().map(msg => {
                     const isMe = msg.sender === 'me';
+                    if (msg.isFile) {
+                      return (
+                        <div key={msg.id} className="flex justify-start">
+                          <div className="max-w-md p-4 bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-none flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2.5 bg-rose-50 border border-rose-100 rounded-xl text-rose-500 flex-shrink-0"><PdfIcon className="h-5 w-5" /></div>
+                              <div className="leading-none text-left">
+                                <h4 className="text-xs font-bold text-slate-800 leading-tight">{msg.filename}</h4>
+                                <span className="text-[9.5px] text-slate-400 font-bold block mt-1">{msg.size} &bull; PDF Document</span>
+                              </div>
+                            </div>
+                            <button onClick={() => addToast('Downloading PDF quote...', 'info')} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500"><Download className="h-4 w-4" /></button>
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-md p-3.5 rounded-2xl text-xs leading-relaxed ${
                           isMe 
-                            ? 'bg-primary text-white rounded-tr-none' 
-                            : 'bg-zinc-800 text-zinc-200 rounded-tl-none'
+                            ? 'bg-indigo-600 text-white rounded-tr-none' 
+                            : 'bg-slate-100 text-slate-800 rounded-tl-none'
                         }`}>
                           <p>{msg.text}</p>
-                          <span className="block text-[8px] text-zinc-450/80 text-right mt-1 leading-none">{msg.time}</span>
+                          <span className="block text-[8px] opacity-75 text-right mt-1">{msg.time}</span>
                         </div>
                       </div>
                     );
                   })}
+                  {activeChat === 'amit' && (
+                    <div className="text-[10px] text-slate-400 font-bold italic text-left pl-1.5 animate-pulse">
+                      &bull;&bull;&bull; Amit is typing...
+                    </div>
+                  )}
                 </div>
 
-                <footer className="p-4 border-t border-zinc-800/50 flex-shrink-0 bg-[#121214] flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={chatText}
-                    onChange={(e) => setChatText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="Type a message..."
-                    className="flex-grow bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white placeholder-zinc-550 focus:outline-none focus:border-zinc-700"
-                  />
-                  <button onClick={sendMessage} className="h-9 w-9 bg-primary hover:bg-primary-dark rounded-xl flex items-center justify-center text-white transition-all flex-shrink-0">
-                    <Send className="h-4 w-4" />
-                  </button>
+                <footer className="p-4 border-t border-slate-200 flex-shrink-0 bg-slate-50 flex flex-col gap-3">
+                  <div className="flex gap-2 items-center">
+                    <button onClick={() => addToast('Opening file selector...', 'info')} className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-[9.5px] font-extrabold uppercase tracking-wide"><Paperclip className="h-3.5 w-3.5" /> Attach</button>
+                    <button onClick={() => addToast('Opening photos drawer...', 'info')} className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-[9.5px] font-extrabold uppercase tracking-wide"><Image className="h-3.5 w-3.5" /> Photos</button>
+                    {activeChat === 'amit' && (
+                      <button onClick={() => addToast('Opening payment window for ₹1,200.00...', 'success')} className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 px-4.5 py-1.5 rounded-lg text-[9.5px] font-extrabold uppercase tracking-wide shadow"><DollarSign className="h-3.5 w-3.5" /> Pay Amit</button>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={chatText}
+                      onChange={(e) => setChatText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                      placeholder="Type a message..."
+                      className="flex-grow bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none"
+                    />
+                    <button onClick={() => addToast('Smiley drawer loading...', 'info')} className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400"><Smile className="h-5 w-5" /></button>
+                    <button onClick={sendMessage} className="h-9 w-9 bg-indigo-600 hover:bg-indigo-700 rounded-xl flex items-center justify-center text-white transition-all flex-shrink-0">
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
                 </footer>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: APPLICANTS */}
+          {activeTab === 'applications' && (
+            <div className="space-y-6 animate-fadeIn text-left">
+              <header className="flex justify-between items-center">
+                <div className="text-left">
+                  <h1 className="text-2xl font-display font-black text-slate-950">Manage Applicants</h1>
+                  <p className="text-xs text-slate-400 font-medium">Review and compare bids for your active home projects.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => addToast('Filters toggled', 'info')} className="bg-white border border-slate-200 px-4 py-2 rounded-lg text-xs font-bold">Filter</button>
+                  <button onClick={() => addToast('Sort toggled', 'info')} className="bg-white border border-slate-200 px-4 py-2 rounded-lg text-xs font-bold">Sort</button>
+                </div>
+              </header>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start h-[450px]">
+                
+                {/* Active Requests Left sidebar */}
+                <div className="lg:col-span-4 bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm flex flex-col text-left h-full">
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest p-4 pb-2 block border-b border-slate-100">ACTIVE REQUESTS</span>
+                  <div className="flex-grow overflow-y-auto divide-y divide-slate-100">
+                    {[
+                      { id: 'plumbing', category: 'PLUMBING', title: 'Water Leak Repair', desc: 'Main supply line issues in...', bids: 4 },
+                      { id: 'electrical', category: 'ELECTRICAL', title: 'EV Charger Setup', desc: 'Upgrading to 200A servi...', bids: 2 },
+                      { id: 'hvac', category: 'HVAC', title: 'AC Service', desc: 'Annual cleaning and...', bids: 7 }
+                    ].map(req => (
+                      <button
+                        key={req.id}
+                        onClick={() => setActiveRequestFilter(req.id)}
+                        className={`w-full p-4 text-left border-l-4 transition-all ${
+                          activeRequestFilter === req.id 
+                            ? 'bg-indigo-50/50 border-l-indigo-600' 
+                            : 'border-l-transparent hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex justify-between items-baseline mb-1">
+                          <span className="bg-indigo-50 text-indigo-600 px-1 py-0.2 rounded text-[7.5px] font-extrabold uppercase tracking-wide leading-none">{req.category}</span>
+                          <span className="text-[9.5px] text-indigo-600 font-bold flex-shrink-0">{req.bids} Bids</span>
+                        </div>
+                        <h4 className="font-bold text-xs text-slate-900 leading-tight mt-1.5">{req.title}</h4>
+                        <p className="text-[10px] text-slate-400 truncate mt-0.5">{req.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right applicants grid */}
+                <div className="lg:col-span-8 overflow-y-auto h-full space-y-6 pr-2">
+                  <h3 className="text-sm font-black uppercase text-slate-950 tracking-wider">Applicants for "{activeRequestFilter === 'plumbing' ? 'Water Leak Repair' : (activeRequestFilter === 'electrical' ? 'EV Charger Setup' : 'AC Service')}"</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Applicant 1 */}
+                    <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm flex flex-col justify-between h-[230px]">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <img src="https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=100" alt="Vikram Singh" className="h-10 w-10 rounded-full object-cover" />
+                          <div className="text-left leading-none">
+                            <h4 className="font-bold text-xs text-slate-900">Vikram Singh</h4>
+                            <span className="bg-indigo-600 text-white text-[7.5px] font-extrabold px-1.5 py-0.2 rounded uppercase block mt-1.5 self-start w-fit">TOP MATCH</span>
+                          </div>
+                        </div>
+                        <div className="flex text-amber-500 gap-0.5 items-center text-[10px] font-bold">
+                          <Star className="h-3.5 w-3.5 fill-currentColor" />
+                          <span>4.9 <span className="text-slate-450">(128 reviews)</span></span>
+                        </div>
+                        <div className="flex justify-between items-baseline pt-2 text-[10px] font-bold text-slate-450">
+                          <span>EXPERIENCE</span>
+                          <span>BID AMOUNT</span>
+                        </div>
+                        <div className="flex justify-between items-baseline font-black text-xs">
+                          <span>12 Years</span>
+                          <span className="text-indigo-600 text-sm">₹3,500.00</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100">
+                        <button onClick={() => addToast('Bidding comparison updated', 'info')} className="flex-grow bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[10px] py-2 rounded-lg font-bold">Compare</button>
+                        <button onClick={() => addToast('Hired Vikram Singh successfully!', 'success')} className="flex-grow bg-indigo-600 hover:bg-indigo-700 text-[10px] py-2 rounded-lg font-bold text-white shadow">Hire</button>
+                      </div>
+                    </div>
+ 
+                    {/* Applicant 2 */}
+                    <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm flex flex-col justify-between h-[230px]">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100" alt="Sunita Rao" className="h-10 w-10 rounded-full object-cover" />
+                          <div className="text-left leading-none">
+                            <h4 className="font-bold text-xs text-slate-900">Sunita Rao</h4>
+                          </div>
+                        </div>
+                        <div className="flex text-amber-500 gap-0.5 items-center text-[10px] font-bold">
+                          <Star className="h-3.5 w-3.5 fill-currentColor" />
+                          <span>4.7 <span className="text-slate-450">(84 reviews)</span></span>
+                        </div>
+                        <div className="flex justify-between items-baseline pt-2 text-[10px] font-bold text-slate-450">
+                          <span>EXPERIENCE</span>
+                          <span>BID AMOUNT</span>
+                        </div>
+                        <div className="flex justify-between items-baseline font-black text-xs">
+                          <span>6 Years</span>
+                          <span className="text-indigo-600 text-sm">₹2,950.00</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100">
+                        <button onClick={() => addToast('Bidding comparison updated', 'info')} className="flex-grow bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[10px] py-2 rounded-lg font-bold">Compare</button>
+                        <button onClick={() => addToast('Hired Sunita Rao successfully!', 'success')} className="flex-grow bg-indigo-600 hover:bg-indigo-700 text-[10px] py-2 rounded-lg font-bold text-white shadow">Hire</button>
+                      </div>
+                    </div>
+ 
+                    {/* Applicant 3 */}
+                    <div className="bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm flex flex-col justify-between h-[230px]">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100" alt="Arjun Nair" className="h-10 w-10 rounded-full object-cover" />
+                          <div className="text-left leading-none">
+                            <h4 className="font-bold text-xs text-slate-900">Arjun Nair</h4>
+                          </div>
+                        </div>
+                        <div className="flex text-amber-500 gap-0.5 items-center text-[10px] font-bold">
+                          <Star className="h-3.5 w-3.5 fill-currentColor" />
+                          <span>5.0 <span className="text-slate-450">(12 reviews)</span></span>
+                        </div>
+                        <div className="flex justify-between items-baseline pt-2 text-[10px] font-bold text-slate-450">
+                          <span>EXPERIENCE</span>
+                          <span>BID AMOUNT</span>
+                        </div>
+                        <div className="flex justify-between items-baseline font-black text-xs">
+                          <span>3 Years</span>
+                          <span className="text-indigo-600 text-sm">₹2,100.00</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 mt-4 pt-3 border-t border-slate-100">
+                        <button onClick={() => addToast('Bidding comparison updated', 'info')} className="flex-grow bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[10px] py-2 rounded-lg font-bold">Compare</button>
+                        <button onClick={() => addToast('Hired Arjun Nair successfully!', 'success')} className="flex-grow bg-indigo-600 hover:bg-indigo-700 text-[10px] py-2 rounded-lg font-bold text-white shadow">Hire</button>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Bottom comparison panel */}
+              <div className="space-y-4 pt-6 border-t border-slate-200/60 mt-8 text-left">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-black uppercase text-slate-950 tracking-wider">Side-by-Side Comparison</h3>
+                  <button onClick={() => addToast('Customizing compare options...', 'info')} className="text-xs font-bold text-indigo-600 hover:underline">Customize View</button>
+                </div>
+                
+                <div className="bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-400 uppercase font-black tracking-wider text-[10px] border-b border-slate-200">
+                      <tr>
+                        <th className="py-4 px-6">Feature</th>
+                        <th className="py-4 px-6">Vikram Singh</th>
+                        <th className="py-4 px-6">Sunita Rao</th>
+                        <th className="py-4 px-6">Arjun Nair</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700 font-bold">
+                      <tr>
+                        <td className="py-4 px-6 text-slate-400 uppercase text-[9px] tracking-wider">Est. Timeline</td>
+                        <td className="py-4 px-6">Today, 2 PM</td>
+                        <td className="py-4 px-6">Tomorrow, 9 AM</td>
+                        <td className="py-4 px-6">Thursday, 1 PM</td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 px-6 text-slate-400 uppercase text-[9px] tracking-wider">Insurance</td>
+                        <td className="py-4 px-6 text-emerald-600 flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Verified</td>
+                        <td className="py-4 px-6 text-emerald-600"><span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4" /> Verified</span></td>
+                        <td className="py-4 px-6 text-amber-600"><span className="flex items-center gap-1.5"><AlertCircle className="h-4 w-4" /> Pending</span></td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 px-6 text-slate-400 uppercase text-[9px] tracking-wider">Labor Warranty</td>
+                        <td className="py-4 px-6">2 Years</td>
+                        <td className="py-4 px-6">1 Year</td>
+                        <td className="py-4 px-6">90 Days</td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 px-6 text-slate-400 uppercase text-[9px] tracking-wider">Cancellation Policy</td>
+                        <td className="py-4 px-6">24h notice</td>
+                        <td className="py-4 px-6">Flexible</td>
+                        <td className="py-4 px-6">Flexible</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 5: PAYMENTS */}
+          {activeTab === 'payments' && (
+            <div className="space-y-6 animate-fadeIn text-left">
+              <div>
+                <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Payments</h1>
+                <p className="text-xs text-slate-400 font-medium">Verify payout invoices and transactions.</p>
+              </div>
+
+              <div className="p-5 bg-white border border-slate-200/60 rounded-2xl shadow-sm">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-400 uppercase font-black tracking-wider text-[10px] border-b border-slate-200">
+                    <tr>
+                      <th className="py-4 px-6">Transaction</th>
+                      <th className="py-4 px-6">Service</th>
+                      <th className="py-4 px-6">Amount</th>
+                      <th className="py-4 px-6">Date</th>
+                      <th className="py-4 px-6 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {mockTransactions.map(tx => (
+                      <tr key={tx.id} className="hover:bg-slate-50">
+                        <td className="py-4.5 px-6 font-bold text-slate-900">Paid to {tx.to}</td>
+                        <td className="py-4.5 px-6 text-slate-450">{tx.service}</td>
+                        <td className="py-4.5 px-6 font-semibold">₹{tx.amount?.toLocaleString()}</td>
+                        <td className="py-4.5 px-6 text-slate-400">{tx.date}</td>
+                        <td className="py-4.5 px-6 text-right">
+                          <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 rounded px-2.5 py-0.5 font-bold uppercase tracking-wider text-[8px]">
+                            {tx.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
           {/* TAB 6: REVIEWS */}
           {activeTab === 'reviews' && (
-            <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h1 className="text-2xl font-display font-black text-white uppercase tracking-wider">Reviews</h1>
-                <p className="text-xs text-slate-400 font-medium">Leave feedback for workers or read past reviews.</p>
-              </div>
+            <div className="space-y-8 animate-fadeIn text-left">
+              <header className="flex justify-between items-center">
+                <div className="text-left">
+                  <h1 className="text-2xl font-display font-black text-slate-950">Reviews Console</h1>
+                  <p className="text-xs text-slate-400 font-medium mt-1">You have 2 completed jobs that need your review.</p>
+                </div>
+              </header>
 
-              <div className="flex gap-2 border-b border-zinc-800/40 pb-3">
-                {['to-review', 'past-reviews'].map(filter => (
-                  <button
-                    key={filter}
-                    onClick={() => setReviewsFilter(filter)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                      reviewsFilter === filter 
-                        ? 'bg-zinc-800 text-white' 
-                        : 'text-zinc-450 hover:text-white'
-                    }`}
+              {/* Awaiting Feedback row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                {/* Review Prompt Card 1 */}
+                <div className="md:col-span-2 bg-white border border-slate-200/60 rounded-3xl overflow-hidden shadow-sm flex flex-col md:flex-row h-[320px]">
+                  <div className="relative w-full md:w-56 h-48 md:h-full bg-slate-100 flex-shrink-0">
+                    <img src="https://images.unsplash.com/photo-1558002038-1055907df827?w=400" alt="Marcus Thorne" className="w-full h-full object-cover" />
+                    <span className="absolute top-2.5 left-2.5 bg-indigo-600 text-white px-2.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide">
+                      COMPLETED MAY 12
+                    </span>
+                    <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-black/40 px-2.5 py-1 rounded-xl text-white backdrop-blur-sm">
+                      <div className="h-6 w-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-[9px] border border-white/20">MT</div>
+                      <div className="text-left leading-none">
+                        <span className="block text-[8.5px] font-bold">Marcus Thorne</span>
+                        <span className="text-[7.5px] font-medium opacity-80">Certified Electrician</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-5 flex-grow flex flex-col justify-between text-xs">
+                    <div className="space-y-4">
+                      <div className="text-left leading-tight">
+                        <h4 className="font-bold text-sm text-slate-900 leading-tight">Smart Lighting Installation</h4>
+                        <p className="text-[9.5px] text-slate-400 font-bold block mt-1 uppercase">Professional setup of Philips Hue eco-system across the main floor and terrace.</p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide block">HOW WAS THE EXPERIENCE?</span>
+                        <div className="flex gap-1 text-slate-300">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button key={star} onClick={() => handleRatingClick('rev-1', star)} className="hover:scale-110 transition-transform">
+                              <Star className={`h-5.5 w-5.5 ${star <= (reviewsState.find(r => r.id === 'rev-1')?.rating || 0) ? 'text-amber-400 fill-currentColor' : 'text-slate-300'}`} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wide block">YOUR COMMENTS</span>
+                        <input
+                          type="text"
+                          value={reviewsState.find(r => r.id === 'rev-1')?.comment || ''}
+                          onChange={(e) => handleReviewTextChange('rev-1', e.target.value)}
+                          placeholder="What stood out about Marcus's work?"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        handleReviewSubmit('rev-1');
+                      }}
+                      className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold py-2 rounded-xl transition-all shadow mt-4"
+                    >
+                      Submit Review
+                    </button>
+                  </div>
+                </div>
+
+                {/* Review Prompt Card 2 */}
+                <div className="bg-indigo-50/50 border border-indigo-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between h-[320px] text-left">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs border border-indigo-200">ER</div>
+                      <div className="text-left leading-none">
+                        <h4 className="font-bold text-xs text-slate-900">Elena Rodriguez</h4>
+                        <span className="text-[9px] text-slate-400 font-bold block mt-1.5 uppercase">Painting Services</span>
+                      </div>
+                    </div>
+                    <h4 className="font-bold text-sm text-slate-950 pt-2 leading-tight">Accent Wall Painting</h4>
+                    <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">Completed 2 days ago. Elena is waiting for your feedback to complete her job payout.</p>
+                  </div>
+                  <button 
+                    onClick={() => addToast('Review details loaded...', 'info')}
+                    className="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold py-2 rounded-xl transition-all shadow"
                   >
-                    {filter === 'to-review' ? 'To Review' : 'Past Reviews'}
+                    Start Review
                   </button>
-                ))}
+                </div>
               </div>
 
-              {reviewsFilter === 'to-review' ? (
-                <div className="space-y-4">
-                  {reviewsState.filter(r => !r.submitted).length === 0 ? (
-                    <div className="p-8 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl text-center space-y-2">
-                      <CheckCircle2 className="h-8 w-8 text-emerald-450 mx-auto" />
-                      <h4 className="font-bold text-white text-sm">All reviews completed!</h4>
-                      <p className="text-xs text-zinc-400">You have reviewed all hired professionals.</p>
-                    </div>
-                  ) : (
-                    reviewsState.filter(r => !r.submitted).map(review => (
-                      <div key={review.id} className="p-5 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex flex-col gap-4 hover:border-zinc-700/80 transition-all">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-full bg-zinc-800 text-zinc-300 flex items-center justify-center font-bold text-xs border border-zinc-700">
-                              {getInitials(review.name)}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-sm text-white leading-none">{review.name}</h4>
-                              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">{review.category}</p>
-                            </div>
-                          </div>
-                          <span className="text-[10px] text-zinc-450 font-bold uppercase tracking-wider">Job Completed: {review.completedDate}</span>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold text-zinc-400">Rating:</span>
-                          <div className="flex gap-1 text-zinc-650">
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <button 
-                                key={star}
-                                onClick={() => handleRatingClick(review.id, star)}
-                                className="p-0.5 hover:scale-110 transition-transform"
-                              >
-                                <Star className={`h-5 w-5 ${star <= review.rating ? 'text-amber-400 fill-currentColor' : 'text-zinc-600'}`} />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex gap-3 items-end">
-                          <textarea
-                            value={review.text}
-                            onChange={(e) => handleReviewTextChange(review.id, e.target.value)}
-                            placeholder="Write a feedback review about their plumbing/electrical/cleaning quality, communication and speed..."
-                            className="flex-grow bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-xs text-white placeholder-zinc-550 focus:outline-none focus:border-zinc-700 h-16 resize-none"
-                          />
-                          <button
-                            onClick={() => handleReviewSubmit(review.id)}
-                            className="bg-primary hover:bg-primary-dark text-xs px-5 py-3 rounded-xl font-bold text-white transition-all flex-shrink-0"
-                          >
-                            Write a review
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
+              {/* History section */}
+              <div className="space-y-4 pt-6 border-t border-slate-200/60 mt-8">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-black uppercase text-slate-950 tracking-wider">History</h3>
+                  <div className="flex gap-2">
+                    <button onClick={() => setReviewsHistoryFilter('all')} className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${reviewsHistoryFilter === 'all' ? 'bg-slate-200 text-slate-800' : 'text-slate-400'}`}>All</button>
+                    <button onClick={() => setReviewsHistoryFilter('high')} className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${reviewsHistoryFilter === 'high' ? 'bg-slate-200 text-slate-800' : 'text-slate-400'}`}>High Rated</button>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {reviewsState.filter(r => r.submitted).length === 0 ? (
-                    <div className="p-8 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl text-center space-y-1">
-                      <Star className="h-8 w-8 text-zinc-650 mx-auto" />
-                      <h4 className="font-bold text-white text-sm">No reviews written yet</h4>
-                      <p className="text-xs text-zinc-400">Completed feedback submissions will display here.</p>
-                    </div>
-                  ) : (
-                    reviewsState.filter(r => r.submitted).map(review => (
-                      <div key={review.id} className="p-5 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex flex-col gap-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-full bg-zinc-800 text-zinc-300 flex items-center justify-center font-bold text-xs">
-                              {getInitials(review.name)}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-sm text-white leading-none">{review.name}</h4>
-                              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mt-1">{review.category}</p>
-                            </div>
-                          </div>
-                          <div className="flex text-amber-400 gap-0.5">
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <Star key={star} className={`h-4 w-4 ${star <= review.rating ? 'fill-currentColor text-amber-400' : 'text-zinc-700'}`} />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-xs text-zinc-450 leading-relaxed italic mt-1 font-medium pl-1">
-                          "{review.text || 'Excellent job, highly professional and timely work!'}"
-                        </p>
-                      </div>
-                    ))
-                  )}
+                <div className="p-8 bg-white border border-slate-200/60 rounded-2xl text-center space-y-1 text-slate-450 shadow-sm h-[120px] flex flex-col justify-center items-center">
+                  <Star className="h-6 w-6 text-slate-300" />
+                  <p className="text-xs mt-2">Past rating history will appear here.</p>
                 </div>
-              )}
+              </div>
+
             </div>
           )}
 
-          {/* TAB 7: SAVED WORKERS */}
+          {/* TAB 7: SCHEDULE */}
           {activeTab === 'saved-workers' && (
-            <div className="space-y-6 animate-fadeIn">
+            <div className="space-y-6 animate-fadeIn text-left">
               <div>
-                <h1 className="text-2xl font-display font-black text-white uppercase tracking-wider">Saved Professionals</h1>
-                <p className="text-xs text-slate-400 font-medium">Quickly reach out to your bookmarked local professionals.</p>
+                <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Availability Schedule</h1>
+                <p className="text-xs text-slate-400 font-medium">Verify upcoming hired bookings.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {mockSaved.map(worker => (
-                  <div key={worker.id} className="p-5 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex items-center justify-between hover:border-zinc-700/80 transition-all shadow-sm">
-                    <div className="flex items-center gap-3.5">
-                      <div className="h-10 w-10 rounded-full bg-indigo-950 text-indigo-255 flex items-center justify-center font-black text-xs border border-indigo-900/40">
-                        {getInitials(worker.name)}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-sm text-white leading-tight">{worker.name}</h4>
-                        <p className="text-[10px] text-zinc-450 font-bold uppercase tracking-wider mt-1 flex items-center gap-1.5">
-                          <span>{worker.category}</span> &bull; 
-                          <span>{worker.experience} yrs exp</span> &bull;
-                          <span className="flex items-center text-amber-400 gap-0.5"><Star className="h-3 w-3 fill-currentColor" /> {worker.rating}</span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <span className="text-[9px] text-zinc-550 block uppercase font-bold tracking-wider">Est. Rate</span>
-                        <span className="text-xs font-black text-zinc-200">₹{worker.price?.toLocaleString()}/Visit</span>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          setActiveTab('messages');
-                          setActiveChat(worker.name.toLowerCase().includes('ramesh') ? 'ramesh' : worker.name.toLowerCase().includes('suresh') ? 'suresh' : 'pooja');
-                        }}
-                        className="px-4.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold rounded-xl text-white transition-all"
-                      >
-                        Message
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 8: PAYMENTS */}
-          {activeTab === 'payments' && (
-            <div className="space-y-8 animate-fadeIn">
-              <div>
-                <h1 className="text-2xl font-display font-black text-white uppercase tracking-wider">Payments</h1>
-                <p className="text-xs text-slate-400 font-medium">Track your completed and pending transactions.</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-[#1c1c1e] border border-zinc-800/60 p-5 rounded-2xl flex flex-col justify-between h-28">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Total Spent</span>
-                  <div className="text-3xl font-display font-black text-white">₹2,450</div>
-                  <span className="text-[9px] text-zinc-500 font-medium uppercase">2 Payments</span>
+              <div className="p-5 bg-white border border-slate-200/60 rounded-2xl shadow-sm text-center">
+                <div className="grid grid-cols-7 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-3">
+                  <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
                 </div>
-                <div className="bg-[#1c1c1e] border border-zinc-800/60 p-5 rounded-2xl flex flex-col justify-between h-28">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Pending Payments</span>
-                  <div className="text-3xl font-display font-black text-zinc-400">₹0</div>
-                  <span className="text-[9px] text-zinc-500 font-medium uppercase">0 Payments</span>
-                </div>
-                <div className="bg-[#1c1c1e] border border-zinc-800/60 p-5 rounded-2xl flex flex-col justify-between h-28">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Completed Payments</span>
-                  <div className="text-3xl font-display font-black text-emerald-450">₹2,450</div>
-                  <span className="text-[9px] text-zinc-550 font-medium uppercase">3 Payments</span>
-                </div>
-                <div className="bg-[#1c1c1e] border border-zinc-800/60 p-5 rounded-2xl flex flex-col justify-between h-28">
-                  <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Saved Cards</span>
-                  <div className="text-3xl font-display font-black text-white">2</div>
-                  <span className="text-[9px] text-zinc-500 font-medium uppercase">Cards</span>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h2 className="text-base font-display font-black uppercase tracking-wider text-white">Recent Transactions</h2>
-                <div className="bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs text-zinc-300">
-                      <thead className="bg-[#151517] text-zinc-400 uppercase font-black tracking-wider text-[10px] border-b border-zinc-800/40">
-                        <tr>
-                          <th className="py-4 px-6">Transaction</th>
-                          <th className="py-4 px-6">Service</th>
-                          <th className="py-4 px-6">Amount</th>
-                          <th className="py-4 px-6">Date</th>
-                          <th className="py-4 px-6 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-800/30">
-                        {mockTransactions.map(tx => (
-                          <tr key={tx.id} className="hover:bg-zinc-850/25 transition-colors">
-                            <td className="py-4.5 px-6 font-bold text-white">Paid to {tx.to}</td>
-                            <td className="py-4.5 px-6 text-zinc-400">{tx.service}</td>
-                            <td className="py-4.5 px-6 font-semibold">₹{tx.amount?.toLocaleString()}</td>
-                            <td className="py-4.5 px-6 text-zinc-450">{tx.date}</td>
-                            <td className="py-4.5 px-6 text-right">
-                              <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg px-2.5 py-0.5 font-bold uppercase tracking-wider text-[8px]">
-                                {tx.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 9: PROFILE */}
-          {activeTab === 'profile' && (
-            <div className="space-y-6 animate-fadeIn">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-2xl font-display font-black text-white uppercase tracking-wider">Profile Information</h1>
-                  <p className="text-xs text-slate-400 font-medium">View and update your homeowner contact coordinates.</p>
-                </div>
-                <button
-                  onClick={() => setIsEditingProfile(!isEditingProfile)}
-                  className="bg-[#1c1c1e] border border-zinc-800 hover:bg-zinc-850 text-xs px-4 py-2.5 font-bold rounded-xl text-white transition-all"
-                >
-                  {isEditingProfile ? 'Cancel Edit' : 'Edit Profile'}
-                </button>
-              </div>
-
-              <div className="p-6 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex flex-col md:flex-row gap-8 items-start">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="h-20 w-20 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-3xl border-2 border-zinc-850 shadow-md">
-                    {getInitials(profileName)}
-                  </div>
-                  <div className="text-center leading-tight">
-                    <h3 className="font-bold text-base text-white">{profileName}</h3>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider mt-1">Homeowner</p>
-                  </div>
-                </div>
-
-                <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-                  <div className="space-y-1.5">
-                    <span className="text-zinc-500 block uppercase font-bold tracking-wider text-[9px]">Full Name</span>
-                    {isEditingProfile ? (
-                      <input
-                        type="text"
-                        value={profileName}
-                        onChange={(e) => setProfileName(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-zinc-700"
-                      />
-                    ) : (
-                      <div className="text-zinc-200 font-bold py-1">{profileName}</div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-zinc-500 block uppercase font-bold tracking-wider text-[9px]">Email Address</span>
-                    {isEditingProfile ? (
-                      <input
-                        type="email"
-                        value={profileEmail}
-                        onChange={(e) => setProfileEmail(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-zinc-700"
-                      />
-                    ) : (
-                      <div className="text-zinc-200 font-semibold py-1">{profileEmail}</div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-zinc-500 block uppercase font-bold tracking-wider text-[9px]">Phone Number</span>
-                    {isEditingProfile ? (
-                      <input
-                        type="text"
-                        value={profilePhone}
-                        onChange={(e) => setProfilePhone(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-zinc-700"
-                      />
-                    ) : (
-                      <div className="text-zinc-200 font-semibold py-1">{profilePhone}</div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-zinc-500 block uppercase font-bold tracking-wider text-[9px]">Address</span>
-                    {isEditingProfile ? (
-                      <input
-                        type="text"
-                        value={profileCity}
-                        onChange={(e) => setProfileCity(e.target.value)}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3.5 py-2 text-white text-xs focus:outline-none focus:border-zinc-700"
-                      />
-                    ) : (
-                      <div className="text-zinc-200 font-semibold py-1">{profileCity}</div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <span className="text-zinc-500 block uppercase font-bold tracking-wider text-[9px]">Member Since</span>
-                    <div className="text-zinc-300 font-medium py-1">May 2024</div>
-                  </div>
-
-                  {isEditingProfile && (
-                    <div className="md:col-span-2 pt-2 text-right">
-                      <button
-                        onClick={() => {
-                          setIsEditingProfile(false);
-                          addToast('Profile updated successfully!', 'success');
-                        }}
-                        className="bg-primary hover:bg-primary-dark text-xs px-6 py-2 rounded-xl font-bold text-white transition-all"
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 10: SETTINGS */}
-          {activeTab === 'settings' && (
-            <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h1 className="text-2xl font-display font-black text-white uppercase tracking-wider">Settings</h1>
-                <p className="text-xs text-slate-400 font-medium">Fine-tune system behaviors and alert parameters.</p>
-              </div>
-
-              <div className="border border-zinc-800/60 rounded-2xl bg-[#121214] flex min-h-[400px] overflow-hidden">
-                <div className="w-56 border-r border-zinc-800/50 flex flex-col p-4 space-y-1 bg-[#161618]">
-                  {[
-                    { id: 'general', label: 'General Settings' },
-                    { id: 'notifications', label: 'Notifications' },
-                    { id: 'privacy', label: 'Privacy Control' },
-                    { id: 'security', label: 'Security & Access' },
-                    { id: 'language', label: 'Language & Locale' }
-                  ].map(tab => (
+                <div className="grid grid-cols-7 gap-2.5">
+                  {Array.from({ length: 30 }).map((_, i) => (
                     <button
-                      key={tab.id}
-                      onClick={() => setSettingsSubTab(tab.id)}
-                      className={`w-full text-left text-xs font-bold px-4 py-2.5 rounded-lg transition-colors uppercase tracking-wider ${
-                        settingsSubTab === tab.id 
-                          ? 'bg-[#1c1c1e] text-white' 
-                          : 'text-zinc-400 hover:text-white'
+                      key={i}
+                      className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+                        i + 1 === 12 ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
-                      {tab.label}
+                      {i + 1}
                     </button>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
 
-                <div className="flex-grow p-6 space-y-6 text-xs text-zinc-350">
-                  <h3 className="font-display font-black text-sm uppercase tracking-wider text-white border-b border-zinc-800/40 pb-2.5">
-                    {settingsSubTab.toUpperCase()} Settings
-                  </h3>
+          {/* TAB 8: ANALYTICS / SUPPORT */}
+          {activeTab === 'help' && (
+            <div className="space-y-8 animate-fadeIn text-left">
+              <div>
+                <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Analytics & FAQ</h1>
+                <p className="text-xs text-slate-400 font-medium">Coordinate help logs and support details.</p>
+              </div>
 
-                  {settingsSubTab === 'general' && (
-                    <div className="space-y-5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-bold text-zinc-250">Dark Mode</h4>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">Toggle default interface layout coloration</p>
-                        </div>
-                        <button
-                          onClick={() => setSettingsToggles({ ...settingsToggles, darkMode: !settingsToggles.darkMode })}
-                          className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
-                            settingsToggles.darkMode ? 'bg-primary' : 'bg-zinc-850'
-                          }`}
-                        >
-                          <div className={`bg-white h-4.5 w-4.5 rounded-full shadow-md transform transition-transform duration-200 ${
-                            settingsToggles.darkMode ? 'translate-x-4.5' : 'translate-x-0'
-                          }`} />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-bold text-zinc-250">High Contrast Text</h4>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">Enhance legibility threshold across dashboard panels</p>
-                        </div>
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase border border-zinc-800/60 rounded px-1.5 py-0.5 bg-zinc-900">Active</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {settingsSubTab === 'notifications' && (
-                    <div className="space-y-5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-bold text-zinc-250">Email Notifications</h4>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">Receive email updates about jobs and applicant statuses</p>
-                        </div>
-                        <button
-                          onClick={() => setSettingsToggles({ ...settingsToggles, emailNotifications: !settingsToggles.emailNotifications })}
-                          className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ${
-                            settingsToggles.emailNotifications ? 'bg-primary' : 'bg-zinc-850'
-                          }`}
-                        >
-                          <div className={`bg-white h-4.5 w-4.5 rounded-full shadow-md transform transition-transform duration-200 ${
-                            settingsToggles.emailNotifications ? 'translate-x-4.5' : 'translate-x-0'
-                          }`} />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-bold text-zinc-250">SMS Notifications</h4>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">Receive text message alerts about important bookings and messages</p>
-                        </div>
-                        <button
-                          onClick={() => setSettingsToggles({ ...settingsToggles, smsNotifications: !settingsToggles.smsNotifications })}
-                          className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ${
-                            settingsToggles.smsNotifications ? 'bg-primary' : 'bg-zinc-850'
-                          }`}
-                        >
-                          <div className={`bg-white h-4.5 w-4.5 rounded-full shadow-md transform transition-transform duration-200 ${
-                            settingsToggles.smsNotifications ? 'translate-x-4.5' : 'translate-x-0'
-                          }`} />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-bold text-zinc-250">Push Notifications</h4>
-                          <p className="text-[10px] text-zinc-500 mt-0.5">Receive push notifications in your browser window</p>
-                        </div>
-                        <button
-                          onClick={() => setSettingsToggles({ ...settingsToggles, pushNotifications: !settingsToggles.pushNotifications })}
-                          className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ${
-                            settingsToggles.pushNotifications ? 'bg-primary' : 'bg-zinc-850'
-                          }`}
-                        >
-                          <div className={`bg-white h-4.5 w-4.5 rounded-full shadow-md transform transition-transform duration-200 ${
-                            settingsToggles.pushNotifications ? 'translate-x-4.5' : 'translate-x-0'
-                          }`} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {settingsSubTab === 'privacy' && (
-                    <div className="space-y-4">
-                      <p className="text-xs text-zinc-450 leading-relaxed">Privacy preferences regulate visibility parameters for active job postings and candidate lists to public search networks.</p>
-                      <button className="px-4 py-2 border border-zinc-800 bg-transparent text-xs font-bold rounded-xl text-white transition-all hover:bg-zinc-800">
-                        Adjust Visibility Settings
-                      </button>
-                    </div>
-                  )}
-
-                  {settingsSubTab === 'security' && (
-                    <div className="space-y-4">
-                      <p className="text-xs text-zinc-450 leading-relaxed">Security rules ensure that unauthorized individuals cannot access details of payment coordinates or home locations.</p>
-                      <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-xs font-bold rounded-xl text-white transition-all">
-                        Update Password
-                      </button>
-                    </div>
-                  )}
-
-                  {settingsSubTab === 'language' && (
-                    <div className="space-y-4">
-                      <p className="text-xs text-zinc-450 leading-relaxed">Choose preferred language settings for all automated emails and alert prompts.</p>
-                      <select className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-zinc-700">
-                        <option>English (United States)</option>
-                        <option>Hindi</option>
-                      </select>
-                    </div>
-                  )}
-
-                  <div className="pt-6 border-t border-zinc-800/40 flex justify-end gap-3 mt-4">
-                    <button 
-                      onClick={() => addToast('Changes canceled', 'info')}
-                      className="px-4 py-2 bg-transparent border border-zinc-800 text-xs font-bold rounded-xl hover:bg-zinc-850 transition-all text-white"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={() => addToast('Settings saved successfully!', 'success')}
-                      className="px-6 py-2 bg-primary hover:bg-primary-dark text-xs font-bold rounded-xl text-white transition-all"
-                    >
-                      Save Changes
-                    </button>
-                  </div>
+              <div className="p-5 bg-white border border-slate-200/60 rounded-2xl shadow-sm space-y-4">
+                <h3 className="font-display font-black text-xs uppercase text-slate-900 tracking-wide text-center">FAQ Support search</h3>
+                <div className="relative max-w-md mx-auto">
+                  <input
+                    type="text"
+                    placeholder="Search help topics..."
+                    className="w-full bg-slate-50 border-0 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-800 focus:outline-none"
+                  />
+                  <SearchIcon className="h-4.5 w-4.5 text-slate-400 absolute left-3.5 top-2.5" />
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 11: HELP & SUPPORT */}
-          {activeTab === 'help' && (
-            <div className="space-y-8 animate-fadeIn">
+          {/* TAB 9: SETTINGS */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6 animate-fadeIn text-left">
               <div>
-                <h1 className="text-2xl font-display font-black text-white uppercase tracking-wider">Help & Support</h1>
-                <p className="text-xs text-slate-400 font-medium">Find answers or chat with our systems support division.</p>
+                <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Settings</h1>
+                <p className="text-xs text-slate-400 font-medium">Update notification and interface toggles.</p>
               </div>
 
-              <div className="p-6 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl space-y-4">
-                <h3 className="font-display font-black text-sm uppercase text-white tracking-wider text-center">How can we help you?</h3>
-                <div className="relative max-w-lg mx-auto">
-                  <input
-                    type="text"
-                    value={helpSearchQuery}
-                    onChange={(e) => setHelpSearchQuery(e.target.value)}
-                    placeholder="Search for help topics..."
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-zinc-700"
-                  />
-                  <SearchIcon className="h-4.5 w-4.5 text-zinc-550 absolute left-3.5 top-3" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-xs text-zinc-350">
-                <div className="space-y-4">
-                  <h3 className="font-display font-black text-xs uppercase tracking-wider text-white pl-1">Popular Topics</h3>
-                  <div className="p-5 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl space-y-3.5">
-                    {[
-                      { q: 'How to post a job?', a: 'Navigate to the dashboard and click the "+ Post a new job" button in the upper right. Provide job details, budget parameters and geocoding coordinates.' },
-                      { q: 'How to hire a professional?', a: 'Review candidate lists in the Applications panel. Examine profiles and compatibility scores, message the pros directly, and click hire.' },
-                      { q: 'How to make a payment?', a: 'Hired bookings allow in-app ledger records. Payments are securely processed via linked cards listed under the Payments screen.' },
-                      { q: 'How to contact support?', a: 'Write an email directly to support@homeconnect.com or initiate support messaging using the button on the right.' }
-                    ].filter(item => item.q.toLowerCase().includes(helpSearchQuery.toLowerCase())).map((item, index) => (
-                      <details key={index} className="group border-b border-zinc-800/40 pb-3 last:border-b-0 last:pb-0 cursor-pointer">
-                        <summary className="font-bold text-zinc-200 group-hover:text-white flex justify-between items-center outline-none">
-                          <span>{item.q}</span>
-                          <span className="text-[10px] text-zinc-500 font-bold group-open:rotate-180 transition-transform">&darr;</span>
-                        </summary>
-                        <p className="text-zinc-450 leading-relaxed mt-2 pl-1.5">{item.a}</p>
-                      </details>
-                    ))}
+              <div className="p-6 bg-white border border-slate-200/60 rounded-2xl max-w-xl shadow-sm text-xs text-slate-650 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-slate-900">Email Notifications</h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Receive email alerts on bids</p>
                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-display font-black text-xs uppercase tracking-wider text-white pl-1">Contact Support</h3>
-                  <div className="p-5 bg-[#1c1c1e] border border-zinc-800/60 rounded-2xl flex flex-col justify-between h-[216px] items-start">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-zinc-300 uppercase tracking-wider text-[10px] w-14">Email:</span>
-                        <a href="mailto:support@homeconnect.com" className="text-blue-400 hover:underline">support@homeconnect.com</a>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-zinc-300 uppercase tracking-wider text-[10px] w-14">Phone:</span>
-                        <span className="text-zinc-200 font-semibold">+91 98765 43210</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-zinc-300 uppercase tracking-wider text-[10px] w-14">Availability:</span>
-                        <span className="text-zinc-450 leading-none">We usually reply within a few hours.</span>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => addToast('Opening support chat window...', 'info')}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-xs px-5 py-2.5 font-bold rounded-xl text-white transition-all w-full text-center mt-4"
-                    >
-                      Start a Chat
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setSettingsToggles({ ...settingsToggles, emailNotifications: !settingsToggles.emailNotifications })}
+                    className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ${
+                      settingsToggles.emailNotifications ? 'bg-indigo-600' : 'bg-slate-200'
+                    }`}
+                  >
+                    <div className={`bg-white h-4.5 w-4.5 rounded-full transform transition-transform duration-200 ${
+                      settingsToggles.emailNotifications ? 'translate-x-4.5' : 'translate-x-0'
+                    }`} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -1512,27 +1272,27 @@ export default function HomeownerDashboard() {
       {/* MODAL 12: LOGOUT CONFIRMATION */}
       <AnimatePresence>
         {showLogoutConfirm && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[#1c1c1e] border border-zinc-800 max-w-sm w-full rounded-2xl p-6 shadow-2xl relative"
+              className="bg-white border border-slate-200 max-w-sm w-full rounded-2xl p-6 shadow-2xl relative text-center"
             >
-              <div className="flex flex-col items-center text-center gap-4.5">
-                <div className="h-12 w-12 bg-rose-950/20 text-rose-500 rounded-full flex items-center justify-center border border-rose-900/30">
+              <div className="flex flex-col items-center gap-4.5">
+                <div className="h-12 w-12 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center border border-rose-100">
                   <ShieldAlert className="h-6 w-6" />
                 </div>
                 <div>
-                  <h3 className="font-display font-black text-base text-white uppercase tracking-wider leading-none">Logout Account</h3>
-                  <p className="text-xs text-zinc-400 mt-2.5 leading-normal">
+                  <h3 className="font-display font-black text-base text-slate-900 uppercase tracking-wider leading-none">Logout</h3>
+                  <p className="text-xs text-slate-400 mt-2.5 leading-normal">
                     Are you sure you want to logout from your account?
                   </p>
                 </div>
-                <div className="flex gap-3 w-full mt-2">
+                <div className="flex gap-3 w-full mt-4">
                   <button 
                     onClick={() => setShowLogoutConfirm(false)}
-                    className="flex-1 bg-transparent hover:bg-zinc-850 border border-zinc-800 text-xs py-3.5 font-bold rounded-xl text-white transition-all outline-none"
+                    className="flex-1 bg-transparent hover:bg-slate-50 border border-slate-200 text-xs py-3 font-bold rounded-lg text-slate-700 transition-all outline-none"
                   >
                     Cancel
                   </button>
@@ -1542,7 +1302,7 @@ export default function HomeownerDashboard() {
                       logout();
                       navigate('/');
                     }}
-                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-xs py-3.5 font-bold rounded-xl text-white transition-all outline-none shadow-lg shadow-rose-600/10"
+                    className="flex-1 bg-rose-600 hover:bg-rose-700 text-xs py-3 font-bold rounded-lg text-white transition-all outline-none shadow"
                   >
                     Logout
                   </button>

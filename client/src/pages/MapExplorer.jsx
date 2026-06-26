@@ -12,10 +12,10 @@ import Avatar from '../components/ui/Avatar.jsx';
 
 // Mock location listings for map display
 const MAP_ITEMS = [
-  { id: '1', type: 'worker', name: 'Ian Carpenter', category: 'Carpentry', rating: 4.8, distance: 1.2, x: 25, y: 35, headline: 'Custom furniture building and door repair' },
-  { id: '2', type: 'worker', name: 'Jack Electrician', category: 'Electrical', rating: 4.9, distance: 2.4, x: 65, y: 25, headline: 'Wiring modifications and circuit upgrades' },
-  { id: '3', type: 'worker', name: 'Karen Cleaner', category: 'Cleaning', rating: 4.7, distance: 0.8, x: 45, y: 55, headline: 'Apartment cleaning and window washing' },
-  { id: '4', type: 'worker', name: 'Leo Plumber', category: 'Plumbing', rating: 4.6, distance: 3.1, x: 75, y: 65, headline: 'Leaky faucet repairs and toilet snaking' },
+  { id: '1', type: 'worker', name: 'Ishaan Sharma', category: 'Carpentry', rating: 4.8, distance: 1.2, x: 25, y: 35, headline: 'Custom furniture building and door repair' },
+  { id: '2', type: 'worker', name: 'Jagdish Kumar', category: 'Electrical', rating: 4.9, distance: 2.4, x: 65, y: 25, headline: 'Wiring modifications and circuit upgrades' },
+  { id: '3', type: 'worker', name: 'Komal Gupta', category: 'Cleaning', rating: 4.7, distance: 0.8, x: 45, y: 55, headline: 'Apartment cleaning and window washing' },
+  { id: '4', type: 'worker', name: 'Lokesh Yadav', category: 'Plumbing', rating: 4.6, distance: 3.1, x: 75, y: 65, headline: 'Leaky faucet repairs and toilet snaking' },
   { id: '5', type: 'job', name: 'Fix kitchen sink pipe leak', category: 'Plumbing', budget: 1500, distance: 1.5, x: 35, y: 45 },
   { id: '6', type: 'job', name: 'Deep clean 3-bedroom apartment', category: 'Cleaning', budget: 3500, distance: 2.1, x: 55, y: 75 }
 ];
