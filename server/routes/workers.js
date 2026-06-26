@@ -45,8 +45,15 @@ router.get('/', async (req, res, next) => {
     if (skills && workers.length > 0) {
       const filterSkills = skills.split(',').map(s => s.trim().toLowerCase());
       workers = workers.filter(worker => {
-        const workerSkills = worker.skills || [];
-        return workerSkills.some(skill => 
+        let workerSkills = worker.skills || [];
+        if (typeof workerSkills === 'string') {
+          try {
+            workerSkills = JSON.parse(workerSkills);
+          } catch (e) {
+            workerSkills = [];
+          }
+        }
+        return workerSkills && Array.isArray(workerSkills) && workerSkills.some(skill => 
           filterSkills.some(fs => skill.toLowerCase().includes(fs))
         );
       });

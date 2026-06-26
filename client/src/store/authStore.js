@@ -65,6 +65,27 @@ export const useAuthStore = create((set, get) => ({
     set({ user: null, worker: null, error: null });
   },
 
+  switchRole: async () => {
+    const { token } = get();
+    if (!token) return;
+    set({ loading: true, error: null });
+    try {
+      const res = await fetch(`${API_BASE}/auth/switch-role`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to switch role');
+      set({ user: data.user, worker: data.worker, loading: false });
+      return data.user.role;
+    } catch (err) {
+      set({ error: err.message, loading: false });
+      throw err;
+    }
+  },
+
   fetchMe: async () => {
     const { token } = get();
     if (!token) {

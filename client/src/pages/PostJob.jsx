@@ -130,6 +130,11 @@ export default function PostJob() {
       // Build final address string including pincode if present
       const finalAddress = pinCode ? `${address}, PIN - ${pinCode}` : address;
 
+      let calculatedStartDate = new Date().toISOString();
+      if (timingOption === 'specific' && specificDate) {
+        calculatedStartDate = new Date(specificDate).toISOString();
+      }
+
       const res = await fetch('/api/jobs', {
         method: 'POST',
         headers: {
@@ -143,6 +148,7 @@ export default function PostJob() {
           budget: Number(budget) || 0,
           hours: timingOption === 'urgent' ? 2 : 4,
           experience: budgetPreset === 'complex' ? 5 : 2,
+          startDate: calculatedStartDate,
           location: { address: finalAddress, lat: coordinates.lat, lng: coordinates.lng },
           radius: Number(radius),
           isEmergency

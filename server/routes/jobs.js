@@ -16,10 +16,20 @@ const calculateCompatibility = (job, worker, workerUser) => {
   let explanations = [];
 
   // 1. Skill overlap (up to +20 points)
-  if (worker.skills && worker.skills.length > 0) {
+  let workerSkills = worker.skills || [];
+  if (typeof workerSkills === 'string') {
+    try {
+      workerSkills = JSON.parse(workerSkills);
+    } catch (e) {
+      workerSkills = [];
+    }
+  }
+
+  // 1. Skill overlap (up to +20 points)
+  if (workerSkills && Array.isArray(workerSkills) && workerSkills.length > 0) {
     const jobKeywords = `${job.title} ${job.description} ${job.serviceType}`.toLowerCase();
     let matchCount = 0;
-    worker.skills.forEach(skill => {
+    workerSkills.forEach(skill => {
       if (jobKeywords.includes(skill.toLowerCase())) {
         matchCount++;
       }
@@ -28,7 +38,7 @@ const calculateCompatibility = (job, worker, workerUser) => {
     if (matchCount > 0) {
       const bonus = Math.min(20, matchCount * 7);
       score += bonus;
-      explanations.push(`Matched ${matchCount} skill keywords (${worker.skills.slice(0, 3).join(', ')}).`);
+      explanations.push(`Matched ${matchCount} skill keywords (${workerSkills.slice(0, 3).join(', ')}).`);
     } else {
       score -= 10;
       explanations.push('Skills listed in profile do not directly match job keywords.');
@@ -117,7 +127,7 @@ router.post('/', protect, requireRole('user', 'admin'), async (req, res, next) =
       experience: experience || 0,
       gender: gender || 'Any',
       language: language || [],
-      startDate,
+      startDate: startDate || new Date(),
       address: location.address,
       lat: location.lat,
       lng: location.lng,
@@ -145,7 +155,15 @@ router.post('/', protect, requireRole('user', 'admin'), async (req, res, next) =
 
     // Alert matching workers in real-time
     workers.forEach(worker => {
-      if (worker.skills.some(skill => skill.toLowerCase().includes(serviceType.toLowerCase())) || 
+      let workerSkills = worker.skills || [];
+      if (typeof workerSkills === 'string') {
+        try {
+          workerSkills = JSON.parse(workerSkills);
+        } catch (e) {
+          workerSkills = [];
+        }
+      }
+      if ((workerSkills && Array.isArray(workerSkills) && workerSkills.some(skill => skill.toLowerCase().includes(serviceType.toLowerCase()))) || 
           worker.headline.toLowerCase().includes(serviceType.toLowerCase())) {
         emitToUser(worker.userId, 'new_job_alert', {
           jobId: job.id,
@@ -370,8 +388,17 @@ router.post('/:id/apply', protect, requireRole('worker'), async (req, res, next)
       return res.status(400).json({ success: false, message: 'You have already applied for this job' });
     }
 
+    let matchCache = job.aiMatchCache || [];
+    if (typeof matchCache === 'string') {
+      try {
+        matchCache = JSON.parse(matchCache);
+      } catch (e) {
+        matchCache = [];
+      }
+    }
+    
     // Fetch score from job matches cache
-    const cachedMatch = job.aiMatchCache.find(m => m.workerId === req.worker.id);
+    const cachedMatch = matchCache.find(m => m.workerId === req.worker.id);
     const score = cachedMatch ? cachedMatch.score : 50;
 
     const application = await Application.create({
@@ -414,7 +441,16 @@ router.get('/:id/matches', protect, async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized to view matching data for this job' });
     }
 
-    const workerIds = job.aiMatchCache.map(m => m.workerId);
+    let matchCache = job.aiMatchCache || [];
+    if (typeof matchCache === 'string') {
+      try {
+        matchCache = JSON.parse(matchCache);
+      } catch (e) {
+        matchCache = [];
+      }
+    }
+
+    const workerIds = matchCache.map(m => m.workerId);
     const workers = await Worker.findAll({
       where: { id: workerIds },
       include: [{ model: User, as: 'user', attributes: ['name', 'photoURL', 'city'] }]
@@ -422,7 +458,7 @@ router.get('/:id/matches', protect, async (req, res, next) => {
 
     const workerMap = new Map(workers.map(w => [w.id, w]));
 
-    const matchesWithData = job.aiMatchCache.map(match => {
+    const matchesWithData = matchCache.map(match => {
       const worker = workerMap.get(match.workerId);
       if (!worker) return null;
       

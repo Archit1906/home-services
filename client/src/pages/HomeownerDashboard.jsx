@@ -100,7 +100,7 @@ const PdfIcon = (props) => (
 
 export default function HomeownerDashboard() {
   const navigate = useNavigate();
-  const { user, token, logout } = useAuthStore();
+  const { user, token, logout, switchRole } = useAuthStore();
   const { addToast } = useToastStore();
   const { initSocket, socket } = useChatStore();
 
@@ -304,12 +304,12 @@ export default function HomeownerDashboard() {
             Post a Job
           </button>
 
-          <button className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500 relative">
+          <button onClick={() => addToast('No new notifications', 'info')} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500 relative">
             <Bell className="h-5 w-5" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-rose-500 rounded-full" />
           </button>
           
-          <button onClick={() => navigate('/auth')} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500">
+          <button onClick={() => setActiveTab('messages')} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500">
             <MessageSquare className="h-5 w-5" />
           </button>
 
@@ -345,9 +345,7 @@ export default function HomeownerDashboard() {
                 { id: 'my-jobs', label: 'Postings', icon: Wrench },
                 { id: 'messages', label: 'Messages', icon: MessageSquare },
                 { id: 'applications', label: 'Applicants', icon: FileText },
-                { id: 'payments', label: 'Payments', icon: CreditCard },
                 { id: 'reviews', label: 'Reviews', icon: Star },
-                { id: 'saved-workers', label: 'Schedule', icon: Calendar },
                 { id: 'help', label: 'Analytics', icon: Star }
               ].map(item => {
                 const IconComponent = item.icon;
@@ -381,7 +379,14 @@ export default function HomeownerDashboard() {
             </button>
             
             <button 
-              onClick={() => navigate('/dashboard/worker')}
+              onClick={async () => {
+                try {
+                  await switchRole();
+                  addToast('Role switched successfully!', 'success');
+                } catch (err) {
+                  addToast('Failed to switch roles', 'error');
+                }
+              }}
               className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-lg text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 text-left transition-all"
             >
               <RefreshCw className="h-4.5 w-4.5" /> Role Switcher
@@ -731,9 +736,9 @@ export default function HomeownerDashboard() {
                 </header>
                 <div className="flex-grow overflow-y-auto divide-y divide-slate-100 bg-white">
                   {[
-                    { id: 'marcus', name: 'Marcus Sterling', category: 'PLUMBING', desc: "I've attached the quote for the kitchen si...", time: '10:42 AM', active: true },
-                    { id: 'elena', name: 'Elena Rossi', category: 'PAINTING', desc: "Great, I'll see you on Monday at 9:00 AM.", time: 'Yesterday' },
-                    { id: 'david', name: 'David Chen', category: 'ELECTRICAL', desc: 'Sent you a photo of the panel wiring.', time: 'Tue' }
+                    { id: 'amit', name: 'Amit Sharma', category: 'PLUMBING', desc: "I've attached the quote for the kitchen si...", time: '10:42 AM', active: true },
+                    { id: 'priya', name: 'Priya Patel', category: 'PAINTING', desc: "Great, I'll see you on Monday at 9:00 AM.", time: 'Yesterday' },
+                    { id: 'rajesh', name: 'Rajesh Kumar', category: 'ELECTRICAL', desc: 'Sent you a photo of the panel wiring.', time: 'Tue' }
                   ].map(chat => (
                     <button
                       key={chat.id}
@@ -824,7 +829,7 @@ export default function HomeownerDashboard() {
                     <button onClick={() => addToast('Opening file selector...', 'info')} className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-[9.5px] font-extrabold uppercase tracking-wide"><Paperclip className="h-3.5 w-3.5" /> Attach</button>
                     <button onClick={() => addToast('Opening photos drawer...', 'info')} className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-[9.5px] font-extrabold uppercase tracking-wide"><Image className="h-3.5 w-3.5" /> Photos</button>
                     {activeChat === 'amit' && (
-                      <button onClick={() => addToast('Opening payment window for ₹1,200.00...', 'success')} className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 px-4.5 py-1.5 rounded-lg text-[9.5px] font-extrabold uppercase tracking-wide shadow"><DollarSign className="h-3.5 w-3.5" /> Pay Amit</button>
+                      <button onClick={() => addToast(`Opening payment window for ₹1,200.00 to pay ${getActiveChatName()}...`, 'success')} className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 px-4.5 py-1.5 rounded-lg text-[9.5px] font-extrabold uppercase tracking-wide shadow"><DollarSign className="h-3.5 w-3.5" /> Pay {getActiveChatName().split(' ')[0]}</button>
                     )}
                   </div>
                   
@@ -1040,44 +1045,7 @@ export default function HomeownerDashboard() {
             </div>
           )}
 
-          {/* TAB 5: PAYMENTS */}
-          {activeTab === 'payments' && (
-            <div className="space-y-6 animate-fadeIn text-left">
-              <div>
-                <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Payments</h1>
-                <p className="text-xs text-slate-400 font-medium">Verify payout invoices and transactions.</p>
-              </div>
 
-              <div className="p-5 bg-white border border-slate-200/60 rounded-2xl shadow-sm">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-400 uppercase font-black tracking-wider text-[10px] border-b border-slate-200">
-                    <tr>
-                      <th className="py-4 px-6">Transaction</th>
-                      <th className="py-4 px-6">Service</th>
-                      <th className="py-4 px-6">Amount</th>
-                      <th className="py-4 px-6">Date</th>
-                      <th className="py-4 px-6 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {mockTransactions.map(tx => (
-                      <tr key={tx.id} className="hover:bg-slate-50">
-                        <td className="py-4.5 px-6 font-bold text-slate-900">Paid to {tx.to}</td>
-                        <td className="py-4.5 px-6 text-slate-450">{tx.service}</td>
-                        <td className="py-4.5 px-6 font-semibold">₹{tx.amount?.toLocaleString()}</td>
-                        <td className="py-4.5 px-6 text-slate-400">{tx.date}</td>
-                        <td className="py-4.5 px-6 text-right">
-                          <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 rounded px-2.5 py-0.5 font-bold uppercase tracking-wider text-[8px]">
-                            {tx.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* TAB 6: REVIEWS */}
           {activeTab === 'reviews' && (
@@ -1187,33 +1155,7 @@ export default function HomeownerDashboard() {
             </div>
           )}
 
-          {/* TAB 7: SCHEDULE */}
-          {activeTab === 'saved-workers' && (
-            <div className="space-y-6 animate-fadeIn text-left">
-              <div>
-                <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Availability Schedule</h1>
-                <p className="text-xs text-slate-400 font-medium">Verify upcoming hired bookings.</p>
-              </div>
 
-              <div className="p-5 bg-white border border-slate-200/60 rounded-2xl shadow-sm text-center">
-                <div className="grid grid-cols-7 text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-3">
-                  <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-                </div>
-                <div className="grid grid-cols-7 gap-2.5">
-                  {Array.from({ length: 30 }).map((_, i) => (
-                    <button
-                      key={i}
-                      className={`h-9 w-9 rounded-xl flex items-center justify-center font-bold text-xs ${
-                        i + 1 === 12 ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* TAB 8: ANALYTICS / SUPPORT */}
           {activeTab === 'help' && (
@@ -1259,6 +1201,23 @@ export default function HomeownerDashboard() {
                   >
                     <div className={`bg-white h-4.5 w-4.5 rounded-full transform transition-transform duration-200 ${
                       settingsToggles.emailNotifications ? 'translate-x-4.5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+                  <div>
+                    <h4 className="font-bold text-slate-900">Push Notifications</h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Receive real-time alerts on bids and messages</p>
+                  </div>
+                  <button
+                    onClick={() => setSettingsToggles({ ...settingsToggles, pushNotifications: !settingsToggles.pushNotifications })}
+                    className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ${
+                      settingsToggles.pushNotifications ? 'bg-indigo-600' : 'bg-slate-200'
+                    }`}
+                  >
+                    <div className={`bg-white h-4.5 w-4.5 rounded-full transform transition-transform duration-200 ${
+                      settingsToggles.pushNotifications ? 'translate-x-4.5' : 'translate-x-0'
                     }`} />
                   </button>
                 </div>

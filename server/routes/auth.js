@@ -194,6 +194,59 @@ router.post('/verify-otp', async (req, res, next) => {
 });
 
 /**
+ * @route   POST /api/auth/switch-role
+ * @desc    Switch user role between 'user' and 'worker'
+ */
+router.post('/switch-role', protect, async (req, res, next) => {
+  try {
+    const user = req.user;
+    const newRole = user.role === 'user' ? 'worker' : 'user';
+    
+    user.role = newRole;
+    await user.save();
+    
+    let worker = null;
+    if (newRole === 'worker') {
+      worker = await Worker.findOne({ where: { userId: user.id } });
+      if (!worker) {
+        worker = await Worker.create({
+          userId: user.id,
+          headline: 'Experienced service professional',
+          skills: [],
+          experience: 5,
+          languages: ['English', 'Hindi'],
+          availabilityCalendar: [
+            { day: 'Monday', slots: ['09:00-17:00'] },
+            { day: 'Tuesday', slots: ['09:00-17:00'] },
+            { day: 'Wednesday', slots: ['09:00-17:00'] },
+            { day: 'Thursday', slots: ['09:00-17:00'] },
+            { day: 'Friday', slots: ['09:00-17:00'] }
+          ]
+        });
+      }
+    }
+    
+    const userResponse = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      city: user.city,
+      role: user.role,
+      photoURL: user.photoURL
+    };
+    
+    return res.json({
+      success: true,
+      user: userResponse,
+      worker
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   GET /api/auth/me
  * @desc    Get currently logged in user info
  */

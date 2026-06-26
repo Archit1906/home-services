@@ -228,7 +228,7 @@ const getCategorySpecificMockData = (category, userCity) => {
 
 export default function WorkerDashboard() {
   const navigate = useNavigate();
-  const { user, worker, logout, token } = useAuthStore();
+  const { user, worker, logout, token, switchRole } = useAuthStore();
   const { addToast } = useToastStore();
   const { initSocket } = useChatStore();
 
@@ -295,6 +295,8 @@ export default function WorkerDashboard() {
     marketingEmails: true,
     darkMode: false
   });
+
+
 
   // Chat
   const [activeChat, setActiveChat] = useState('alex');
@@ -731,18 +733,18 @@ export default function WorkerDashboard() {
 
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => navigate('/dashboard/home/post-job')}
+            onClick={() => addToast('Please switch to a Homeowner account to post a job.', 'info')}
             className="bg-indigo-600 hover:bg-indigo-700 text-xs px-4 py-2 rounded-lg font-bold text-white transition-all"
           >
             Post a Job
           </button>
           
-          <button className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500 relative">
+          <button onClick={() => addToast('No new notifications', 'info')} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500 relative">
             <Bell className="h-5 w-5" />
             <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-rose-500 rounded-full" />
           </button>
           
-          <button onClick={() => navigate('/auth')} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500">
+          <button onClick={() => setActiveTab('messages')} className="p-2 hover:bg-slate-100 rounded-full transition-all text-slate-500">
             <MessageSquare className="h-5 w-5" />
           </button>
 
@@ -778,9 +780,7 @@ export default function WorkerDashboard() {
                 { id: 'find-jobs', label: 'Postings', icon: Briefcase },
                 { id: 'messages', label: 'Messages', icon: MessageSquare },
                 { id: 'my-applications', label: 'Applicants', icon: Users },
-                { id: 'earnings', label: 'Payments', icon: CreditCard },
                 { id: 'reviews-tab', label: 'Reviews', icon: Star },
-                { id: 'my-bookings', label: 'Schedule', icon: Calendar },
                 { id: 'reviews', label: 'Analytics', icon: TrendingUp }
               ].map(item => {
                 const IconComponent = item.icon;
@@ -823,7 +823,14 @@ export default function WorkerDashboard() {
             </button>
             
             <button 
-              onClick={() => addToast('To switch dashboard view roles, please log out and log in with a Homeowner account.', 'info')}
+              onClick={async () => {
+                try {
+                  await switchRole();
+                  addToast('Role switched successfully!', 'success');
+                } catch (err) {
+                  addToast('Failed to switch roles', 'error');
+                }
+              }}
               className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold uppercase tracking-wider rounded-lg text-slate-600 hover:bg-slate-200/50 hover:text-slate-950 text-left transition-all"
             >
               <RefreshCw className="h-4.5 w-4.5" /> Role Switcher
@@ -930,7 +937,6 @@ export default function WorkerDashboard() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-sm font-black uppercase text-slate-950 tracking-wider">Upcoming Shifts</h3>
-                  <button onClick={() => setActiveTab('my-bookings')} className="text-xs font-bold text-indigo-600 hover:underline">View Calendar</button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1298,261 +1304,7 @@ export default function WorkerDashboard() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: PAYMENTS */}
-          {activeTab === 'earnings' && (
-            <div className="space-y-8 animate-fadeIn text-left">
-              <div>
-                <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Payments Ledger</h1>
-                <p className="text-xs text-slate-400 font-medium">Coordinate your payouts and view transaction history.</p>
-              </div>
-
-              <div className="p-5 bg-white border border-slate-200/60 rounded-2xl shadow-sm">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-400 uppercase font-black tracking-wider text-[10px] border-b border-slate-200">
-                    <tr>
-                      <th className="py-4 px-6">Transaction ID</th>
-                      <th className="py-4 px-6">Description</th>
-                      <th className="py-4 px-6">Amount</th>
-                      <th className="py-4 px-6">Date</th>
-                      <th className="py-4 px-6 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {mockTransactions.map(tx => (
-                      <tr key={tx.id} className="hover:bg-slate-50">
-                        <td className="py-4.5 px-6 font-bold text-slate-900">Paid by Alex</td>
-                        <td className="py-4.5 px-6 text-slate-450">{tx.title}</td>
-                        <td className="py-4.5 px-6 font-semibold text-slate-800">₹{tx.budget?.toLocaleString()}</td>
-                        <td className="py-4.5 px-6 text-slate-400">{tx.date}</td>
-                        <td className="py-4.5 px-6 text-right">
-                          <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg px-2.5 py-0.5 font-bold uppercase tracking-wider text-[8px]">
-                            {tx.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 6: SCHEDULE */}
-          {activeTab === 'my-bookings' && (
-            <div className="space-y-6 animate-fadeIn text-left">
-              <header className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Manage Availability</h1>
-                  <p className="text-xs text-slate-400 font-medium">Review your bookings and set open slots for the month.</p>
-                </div>
-                {/* Month/Week/Day Toggles */}
-                <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200/50 text-[10px] font-extrabold uppercase">
-                  {['Month', 'Week', 'Day'].map((viewOpt) => (
-                    <button
-                      key={viewOpt}
-                      onClick={() => addToast(`Toggled calendar view mode to ${viewOpt}`, 'info')}
-                      className={`px-3 py-1.5 rounded-md transition-all ${
-                        viewOpt === 'Month' 
-                          ? 'bg-white text-indigo-650 shadow-sm font-black' 
-                          : 'text-slate-500 hover:text-slate-800'
-                      }`}
-                    >
-                      {viewOpt}
-                    </button>
-                  ))}
-                </div>
-              </header>
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-xs">
-                
-                {/* Month Calendar Grid (Left Column) */}
-                <div className="lg:col-span-8 bg-white border border-slate-200/60 rounded-2xl p-5 shadow-sm text-center flex flex-col">
-                  {/* Calendar Headers */}
-                  <div className="grid grid-cols-7 text-[10px] text-slate-400 font-extrabold uppercase tracking-wider border-b border-slate-100 pb-3 mb-3">
-                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
                   </div>
-                  
-                  {/* Days Grid */}
-                  <div className="grid grid-cols-7 gap-2.5 flex-grow">
-                    {[
-                      { dayNum: 29, isCurrentMonth: false },
-                      { dayNum: 30, isCurrentMonth: false },
-                      { dayNum: 31, isCurrentMonth: false },
-                      { dayNum: 1, isCurrentMonth: true, events: [{ title: 'Plumbing Walkthrough', color: 'bg-blue-50 text-blue-600 border-l-4 border-l-blue-600' }] },
-                      { dayNum: 2, isCurrentMonth: true, events: [{ title: 'Garden Maintenance', color: 'bg-green-50 text-green-600 border-l-4 border-l-green-600' }] },
-                      { dayNum: 3, isCurrentMonth: true, events: [{ title: 'Install Recessed...', color: 'bg-indigo-50 text-indigo-600 border-l-4 border-l-indigo-600' }, { title: 'Client Consult...', color: 'bg-indigo-50 text-indigo-600 border-l-4 border-l-indigo-600' }] },
-                      { dayNum: 4, isCurrentMonth: true },
-                      { dayNum: 5, isCurrentMonth: true, events: [{ title: 'HVAC Service', color: 'bg-amber-50 text-amber-600 border-l-4 border-l-amber-600' }] },
-                      { dayNum: 6, isCurrentMonth: true },
-                      { dayNum: 7, isCurrentMonth: true, showAddButton: true },
-                      { dayNum: 8, isCurrentMonth: true },
-                      { dayNum: 9, isCurrentMonth: true, events: [{ title: 'Maid Service', color: 'bg-rose-50 text-rose-600 border-l-4 border-l-rose-600' }] },
-                      { dayNum: 10, isCurrentMonth: true, events: [{ title: 'HVAC Service', color: 'bg-amber-50 text-amber-600 border-l-4 border-l-amber-600' }] },
-                      { dayNum: 11, isCurrentMonth: true },
-                      { dayNum: 12, isCurrentMonth: true },
-                      { dayNum: 13, isCurrentMonth: true },
-                      { dayNum: 14, isCurrentMonth: true, showAddButton: true },
-                      { dayNum: 15, isCurrentMonth: true, events: [{ title: 'HVAC Service', color: 'bg-amber-50 text-amber-600 border-l-4 border-l-amber-600' }] },
-                      { dayNum: 16, isCurrentMonth: true },
-                      { dayNum: 17, isCurrentMonth: true },
-                      { dayNum: 18, isCurrentMonth: true },
-                      { dayNum: 19, isCurrentMonth: true },
-                      { dayNum: 20, isCurrentMonth: true, events: [{ title: 'HVAC Service', color: 'bg-amber-50 text-amber-600 border-l-4 border-l-amber-600' }] },
-                      { dayNum: 21, isCurrentMonth: true, showAddButton: true },
-                      { dayNum: 22, isCurrentMonth: true },
-                      { dayNum: 23, isCurrentMonth: true },
-                      { dayNum: 24, isCurrentMonth: true },
-                      { dayNum: 25, isCurrentMonth: true },
-                      { dayNum: 26, isCurrentMonth: true },
-                      { dayNum: 27, isCurrentMonth: true, events: [{ title: 'Maid Service', color: 'bg-rose-50 text-rose-600 border-l-4 border-l-rose-600' }] },
-                      { dayNum: 28, isCurrentMonth: true, showAddButton: true },
-                      { dayNum: 29, isCurrentMonth: true },
-                      { dayNum: 30, isCurrentMonth: true, events: [{ title: 'HVAC Service', color: 'bg-amber-50 text-amber-600 border-l-4 border-l-amber-600' }] },
-                      { dayNum: 31, isCurrentMonth: true },
-                      { dayNum: 1, isCurrentMonth: false },
-                    ].map((d, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`min-h-[90px] border border-slate-100 rounded-xl p-2 flex flex-col justify-between text-left ${
-                          d.isCurrentMonth ? 'bg-white' : 'bg-slate-50 opacity-40'
-                        }`}
-                      >
-                        <span className={`text-[10px] font-extrabold ${
-                          d.isCurrentMonth ? 'text-slate-800' : 'text-slate-400'
-                        }`}>{d.dayNum}</span>
-
-                        {/* Events content */}
-                        <div className="space-y-1 my-1.5 flex-grow flex flex-col justify-center">
-                          {d.events?.map((ev, eIdx) => (
-                            <div key={eIdx} className={`px-1.5 py-1 rounded text-[8px] font-bold leading-tight ${ev.color}`}>
-                              {ev.title}
-                            </div>
-                          ))}
-                          
-                          {d.showAddButton && (
-                            <button 
-                              onClick={() => addToast('Add open shift availability slot', 'info')}
-                              className="h-8 w-8 border border-dashed border-slate-300 rounded-lg flex items-center justify-center text-slate-450 hover:bg-slate-50/50 hover:border-slate-400 transition-all mx-auto"
-                            >
-                              <Plus className="h-4.5 w-4.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Availability Shift Settings (Right Column Sidebar) */}
-                <div className="lg:col-span-4 flex flex-col gap-6">
-                  
-                  {/* Shift Settings Card */}
-                  <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-sm text-left relative flex-grow">
-                    <header className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
-                      <Clock className="h-4.5 w-4.5 text-indigo-600" />
-                      <h3 className="font-display font-black text-sm uppercase tracking-wider text-slate-900">Shift Settings</h3>
-                    </header>
-
-                    {/* Global Settings */}
-                    <div className="space-y-4 mb-6">
-                      <h4 className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Global Working Hours</h4>
-                      
-                      <div className="flex items-center justify-between bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                        <span className="font-bold text-xs text-slate-700">Allow Weekend Work</span>
-                        <button className="w-10 h-5.5 bg-slate-200 rounded-full p-0.5 transition-colors">
-                          <div className="bg-white h-4.5 w-4.5 rounded-full shadow" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                        <span className="font-bold text-xs text-slate-700">Enable Instant Booking</span>
-                        <button className="w-10 h-5.5 bg-indigo-600 rounded-full p-0.5 transition-colors flex justify-end">
-                          <div className="bg-white h-4.5 w-4.5 rounded-full shadow" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Day-wise Availability */}
-                    <div className="space-y-4 mb-8">
-                      <h4 className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Day-Wise Availability</h4>
-
-                      {/* Monday */}
-                      <div className="p-4 bg-slate-50/50 border border-slate-200/60 rounded-xl space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="font-extrabold text-xs text-slate-900">Monday</span>
-                          <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide">Active</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center gap-2">
-                            <Clock className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="text-slate-700 font-medium text-[10px]">09:00 AM</span>
-                          </div>
-                          <span className="text-slate-400 font-bold">to</span>
-                          <div className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center gap-2">
-                            <Clock className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="text-slate-700 font-medium text-[10px]">05:00 PM</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Tuesday */}
-                      <div className="p-4 bg-slate-50/50 border border-slate-200/60 rounded-xl space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="font-extrabold text-xs text-slate-900">Tuesday</span>
-                          <span className="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide">Active</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center gap-2">
-                            <Clock className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="text-slate-700 font-medium text-[10px]">09:00 AM</span>
-                          </div>
-                          <span className="text-slate-400 font-bold">to</span>
-                          <div className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center gap-2">
-                            <Clock className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="text-slate-700 font-medium text-[10px]">05:00 PM</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Wednesday */}
-                      <div className="p-4 bg-slate-50/50 border border-slate-200/60 rounded-xl flex items-center justify-between">
-                        <div>
-                          <span className="font-extrabold text-xs text-slate-900">Wednesday</span>
-                          <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide ml-2">Off</span>
-                        </div>
-                        <button 
-                          onClick={() => addToast('Add Wednesday hours slot', 'info')}
-                          className="text-[10px] font-extrabold text-indigo-600 hover:underline"
-                        >
-                          + Add availability
-                        </button>
-                      </div>
-
-                    </div>
-
-                    <button 
-                      onClick={() => addToast('Shift settings saved successfully!', 'success')}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md uppercase tracking-wider"
-                    >
-                      Save Changes
-                    </button>
-
-                    {/* Floating circular add button on settings box */}
-                    <button 
-                      onClick={() => addToast('Configure custom schedule shift overrides', 'info')}
-                      className="absolute bottom-6 right-6 h-12 w-12 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center text-white transition-all shadow-xl active:scale-95 z-10 translate-y-1/2 translate-x-1/2"
-                    >
-                      <Plus className="h-6 w-6" />
-                    </button>
-                  </div>
-
-                </div>
-
-              </div>
             </div>
           )}
 
@@ -2155,6 +1907,59 @@ export default function WorkerDashboard() {
                       settingsToggles.emailNotifications ? 'translate-x-4.5' : 'translate-x-0'
                     }`} />
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 10: SUPPORT */}
+          {activeTab === 'support' && (
+            <div className="space-y-6 animate-fadeIn text-left">
+              <div>
+                <h1 className="text-xl font-display font-black text-slate-900 uppercase tracking-wider">Support Center</h1>
+                <p className="text-xs text-slate-400 font-medium">Get assistance or view answers to frequently asked questions.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Contact Support Card */}
+                <div className="p-6 bg-white border border-slate-200/60 rounded-2xl shadow-sm space-y-4">
+                  <h3 className="font-display font-black text-sm uppercase text-slate-900 tracking-wide">Contact Helpdesk</h3>
+                  <p className="text-xs text-slate-505 leading-relaxed">
+                    Our support team is available 24/7. Raise a ticket or call us for immediate assistance regarding payments or dispute resolutions.
+                  </p>
+                  <div className="space-y-2 pt-2">
+                    <button 
+                      onClick={() => addToast('Raising support ticket...', 'info')}
+                      className="w-full bg-indigo-600 hover:bg-indigo-750 text-white font-extrabold text-[10px] py-3 rounded-xl transition-all shadow uppercase tracking-wide"
+                    >
+                      Create Support Ticket
+                    </button>
+                    <button 
+                      onClick={() => addToast('Connecting to phone support: 1800-123-4567', 'info')}
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 font-extrabold text-[10px] py-3 rounded-xl transition-all uppercase tracking-wide"
+                    >
+                      Call toll-free: 1800-123-4567
+                    </button>
+                  </div>
+                </div>
+
+                {/* FAQ Section */}
+                <div className="p-6 bg-white border border-slate-200/60 rounded-2xl shadow-sm space-y-4">
+                  <h3 className="font-display font-black text-sm uppercase text-slate-900 tracking-wide">Frequently Asked Questions</h3>
+                  <div className="space-y-3.5 divide-y divide-slate-100 text-xs">
+                    <div className="pt-0">
+                      <h4 className="font-bold text-slate-800">How do I withdraw my earnings?</h4>
+                      <p className="text-slate-450 mt-1 leading-normal">Payouts are automatically settled into your linked bank account every Friday.</p>
+                    </div>
+                    <div className="pt-3.5">
+                      <h4 className="font-bold text-slate-800">What if a customer cancels a scheduled job?</h4>
+                      <p className="text-slate-450 mt-1 leading-normal">If a booking is cancelled within 2 hours of the slot, you receive a ₹250 cancellation payout.</p>
+                    </div>
+                    <div className="pt-3.5">
+                      <h4 className="font-bold text-slate-800">How is my match score calculated?</h4>
+                      <p className="text-slate-450 mt-1 leading-normal">Our AI matching looks at your service type, distance, customer rating, and response rate.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
